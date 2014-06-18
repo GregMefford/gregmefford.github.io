@@ -4,7 +4,7 @@
   <title><![CDATA[acts_as_engineer]]></title>
   <link href="http://www.gregmefford.com/atom.xml" rel="self"/>
   <link href="http://www.gregmefford.com/"/>
-  <updated>2014-06-17T23:12:12-04:00</updated>
+  <updated>2014-06-17T23:22:54-04:00</updated>
   <id>http://www.gregmefford.com/</id>
   <author>
     <name><![CDATA[Greg Mefford]]></name>
@@ -145,8 +145,8 @@ Both Answer to Reset (ATR) and the following communications will take place at 9
 <span class='line-number'>9</span>
 </pre></td><td class='code'><pre><code class='c'><span class='line'>  <span class="kt">void</span> <span class="nf">init_USART_9600</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
 </span><span class='line'>    <span class="c1">// Baud rate</span>
-</span><span class='line'>    <span class="c1">// UBRR = f_osc/(16*baud) â€“ 1</span>
-</span><span class='line'>    <span class="c1">// For 9600Hz, UBRR ~= 129.2 = 20000000/(16*9600) â€“ 1</span>
+</span><span class='line'>    <span class="c1">// UBRR = f_osc/(16*baud) - 1</span>
+</span><span class='line'>    <span class="c1">// For 9600Hz, UBRR ~= 129.2 = 20000000/(16*9600) - 1</span>
 </span><span class='line'>    <span class="n">UBRRH</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 </span><span class='line'>    <span class="n">UBRRL</span> <span class="o">=</span> <span class="mi">230</span><span class="p">;</span> <span class="c1">// 129 didn&#39;t look right on the oscilloscope. 230 works well.</span>
 </span><span class='line'>    <span class="c1">// Set frame format: 8data, 1stop bit, even parity</span>
