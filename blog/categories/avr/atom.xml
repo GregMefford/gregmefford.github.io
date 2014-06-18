@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: AVR | acts_as_engineer]]></title>
+  <link href="http://www.gregmefford.com/blog/categories/avr/atom.xml" rel="self"/>
+  <link href="http://www.gregmefford.com/"/>
+  <updated>2014-06-17T23:12:12-04:00</updated>
+  <id>http://www.gregmefford.com/</id>
+  <author>
+    <name><![CDATA[Greg Mefford]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[AVR, Meet Smart Card]]></title>
+    <link href="http://www.gregmefford.com/blog/2010/06/05/avr-meet-smart-card/"/>
+    <updated>2010-06-05T21:19:39-04:00</updated>
+    <id>http://www.gregmefford.com/blog/2010/06/05/avr-meet-smart-card</id>
+    <content type="html"><![CDATA[<p>As a part of my MS thesis research, I have a need to have precise control over an ACS ACOS5 Smart Card.
+In this article, I will explain the code I have written to directly interface an Atmel ATtiny2313 microcontroller to an ACS ACOS5 cryptographic Smart Card.
+Before developing this AVR C code, I experimented with various other methods of interfacing with a Smart Card at a low level, with varying amounts of success.
+I will discuss some of the other methods in future articles, and outline how far I got with them and where there is still opportunity for improvement.</p>
+
+<!-- more -->
+
+
+<h2>Why a Microcontroller?</h2>
+
+<p>My requirement was to have a simple, controllable interface to a Smart Card, with minimal cost as a design goal.
+I started out trying to modify a commercial Smart Card reader to allow protocol analysis while under control of a computer.
+While I was successful in modifying the reader to provide the physical interface, the API for getting low-level access to the card turned out to be difficult.
+I decided that if I had to work with the PCSC API at the lowest level, I might as well just work from the card data sheet and implement as much of the protocol as I needed in C code for my $2 microcontroller.
+This helped me to meet my controllability requirement by having full control over each byte transmitted and recieved between the card and the microcontroller.
+It also helped me to meet a low-cost design goal by using a very inexpensive microcontroller instead of an expensive commercial reader that has been modified, plus a computer to drive it.</p>
+
+<h2>Getting Started with an AVR</h2>
+
+<p>To make prototyping simple, I bought a very helpful prototyping board for the Atmel ATtiny2313 microcontroller from <a href="http://www.evilmadscientist.com/article.php/card2313">Evil Mad Scientist</a>.
+This board is great because it provides silk-screened labels of each IO pin function and plenty of plated through-holes for soldering interface wires and simple components like power supplies, filter capacitors, and resonators.
+For connecting to a Smart Card, I picked up a Smart Card breakout board from <a href="http://www.sparkfun.com/commerce/product_info.php?products_id=9440">SparkFun Electronics</a>.
+This breakout board offers a stanrdard physical interface to slide in a Smart Card and access its pins on plated through-holes, into which I mounted a row of standard single in-line pins that I could use for breadboarding and wiring up to the microcontroller breakout board.</p>
+
+<p>To get a nice stable clock to the microcontroller (and ultimately to the Smart Card), I populated a 20 MHz ceramic resonator in the resonator footprint on the microcontroller breakout board.
+To make use of this external clock, I calculated the appropriate bits using the ATtiny2313 data sheet and programmed the fuse bits as follows:</p>
+
+<p><code>c Configuring ATtiny2313 to Use a 20 MHz External Resonator
+lfuse = 0xAF
+hfuse = 0xDF
+efuse = 0xFF
+</code></p>
+
+<h2>Generating a Smart Card Clock</h2>
+
+<p>The first requirement of interfacing the microcontroller to a Smart Card is to provide the card with a stable clock between 1 MHz and 5 MHz.
+Even though the data IO interface of the ACOS5 Smart Card is asynchronous, the card requires a continuous clock on the CLK pin in order to operate.
+This was accomplished rather simply using the ATtiny2313&rsquo;s hardware PWM function.
+The PWM generator in the ATtiny2313 offers a lot of advanced features, but to simply generate a clock at a given frequency and duty cycle, most of the more advanced options are not required.
+To generate a 2 MHz clock with a 50% duty cycle, I used the following simple function, adapted from the example code given in the data sheet for using the PWM generator:</p>
+
+<p>``` c Generate a 2 MHz Clock with 50% Duty Cycle
+void init_PWM_CLK(void) {
+  // Generate a clock on OC0B pin.
+  // Compare Output Mode:
+  TCCR0A = (0 &lt;&lt; COM0B1) | (1 &lt;&lt; COM0B0) | // Toggle OC0B on Compare Match</p>
+
+<pre><code>       (1 &lt;&lt; WGM01)  | (0 &lt;&lt; WGM00);   // Clear Timer on Compare Match
+</code></pre>
+
+<p>  TCCR0B = (0 &lt;&lt; CS02) | (0 &lt;&lt; CS01) | (1 &lt;&lt; CS00); // IO CLK, no pre-scalar
+  OCR0A = 4; // Freq. = 20MHz / 2*(1+ORC0A) = 2MHz
+}
+```</p>
+
+<p>I also made sure the data direction of the <code>OC0B</code> pin is set to output, so the clock will not default to a high-impedance input:</p>
+
+<p>``` c Configure the OC0B Pin as an Output
+  int main(void) {</p>
+
+<pre><code>DDRD = (1 &lt;&lt; DDD5); // OC0B output pin
+init_PWM_CLK();
+</code></pre>
+
+<p>  }
+```</p>
+
+<h2>Answer to Reset</h2>
+
+<p>Now that we have a clock to drive the Smart Card, the next thing to do is to perform the appropriate power-up sequence to cause the card to reset.
+When the card resets, it transmits an Answer To Reset (ATR) string.
+This string of bytes is used by commercial readers to identify the specific card being interfaced with, and describes its capabilities.
+In this case, I read the ATR with an oscilloscope just to make sure the card is properly resetting, but I do not need the AVR to do anything based on the ATR, since I know the capabilities of the ACOS5 card that I am using for my research.</p>
+
+<p>Since I do not need to actually read the bytes of the ATR sequence, I just use the following start-up sequence:</p>
+
+<p><code>c Smart Card Start-Up Sequence
+  // Power-up procedure
+  set_vpp();
+  _delay_ms(10);
+  set_reset();
+  init_USART_RX();
+  _delay_ms(80);
+</code></p>
+
+<p>The <code>set_vpp</code> and <code>set_reset</code> functions are just convenience methods to set the respective output pins high for the <code>VPP</code> and <code>RESET</code> pads on the Smart Card.
+The <code>init_USART_RX</code> function is used to configure the built-in Universal Sychronous and Asynchronous serial Receiver and Transmitter (USART), which will be described in more detail in the following section.</p>
+
+<h2>Data IO with USART</h2>
+
+<p>A Microcontroller is a powerful tool for this type of low-level system integration because these very inexpensive processors generally come with built-in hardware support for a wide variety of serial protocols like Pulse-Width Modulation (PWM), I2C, and SPI.
+These can be implemented using the AVR&rsquo;s USART and Universial Serial Interface (USI) ports, which support varying word lengths, start bits, stop bits, parity-generation, and parity-checking.</p>
+
+<h3>Configuring the USART Interface</h3>
+
+<p>For simplicity, the USART is configured to communicate at the default 9600 bps defined in the Smart Card standard.
+I believe that the ACOS5 is also capable of communicating at 125 kbps, but I have not yet worked out the command to get it into that mode.
+Both Answer to Reset (ATR) and the following communications will take place at 9600 bps unless configured to do otherwise.</p>
+
+<p>The code to configure the USART interface is straightforward from the data sheet:</p>
+
+<p>``` c Configure the USART to Communicate with the Smart Card
+  void init_USART_9600(void) {</p>
+
+<pre><code>// Baud rate
+// UBRR = f_osc/(16*baud) â€“ 1
+// For 9600Hz, UBRR ~= 129.2 = 20000000/(16*9600) â€“ 1
+UBRRH = 0;
+UBRRL = 230; // 129 didn't look right on the oscilloscope. 230 works well.
+// Set frame format: 8data, 1stop bit, even parity
+UCSRC = (0 &lt;&lt; USBS) | (3 &lt;&lt; UCSZ0) | (1 &lt;&lt; UPM1);
+</code></pre>
+
+<p>  }
+```</p>
+
+<p>Since a Smart Card only has a single IO pad, I implemented the AVR&rsquo;s transceiver interface by connecting the IO pad of the card to both the AVR&rsquo;s TX and RX pins.
+The direction of data on the IO line can then be controlled by software by activating and deactivating the USART&rsquo;s transmit and receieve modes exclusively.
+When in receive mode, both the TX and RX pin on the microcontroller become high-impedance inputs, allowing the Smart Card to transmit.
+In transmit mode, the microcontroller drives the TX pin, sending data to the Smart Card.
+The C code to configure receive and transmit modes is  straightforward, based on the example code provided in the data sheet.
+Since the transmit and receive modes are both enabled in the same control register, setting one without setting the other implicitly disables the latter.
+The only other notable thing is that the <code>TXC</code> bit should be set when entering transmit mode to prevent the USART hardware from transmitting whatever byte happens to be already in the transmit buffer.</p>
+
+<p>The code is as follows:</p>
+
+<p>``` c Configuring the USART for Transmit and Receive Modes
+  void init_USART_RX(void) {</p>
+
+<pre><code>// Enable receiver
+UCSRB = (1 &lt;&lt; RXEN);
+</code></pre>
+
+<p>  }
+  void init_USART_TX(void) {</p>
+
+<pre><code>// Enable transmitter and tell it the buffer is empty.
+UCSRB = (1 &lt;&lt; TXEN) | (1 &lt;&lt; TXC);
+</code></pre>
+
+<p>  }
+```</p>
+
+<h3>Transmitting and Receiving Bytes</h3>
+
+<p>The transmit and receive processes are also straightforward.
+The only thing to keep in mind is that the actual USART hardware is asynchronous to the rest of the running code.
+That is, once a byte is written to the output buffer, the code continues to execute while the byte is transmitted in the background at the specified baud rate.
+To simplify the code structure and avoid using interrupt call-back routines, my code keeps itself sychronous by waiting for each transmitted character to be flushed from the buffer before proceeding.
+Similarly, the code to receive a character blocks until a character is received.
+In one sense, this is dangerous because it could wait forever if the card became unresponsive when the interface was expecing a byte.
+In practice, this should not be much of a problem for me because my research will exercise the card in controlled and well-known routines.</p>
+
+<p>The transmit and receive code is as follows:</p>
+
+<p>``` c Transmitting and Receiving Data with the USART
+  void USART_TX( unsigned char byte ) {</p>
+
+<pre><code>// Clear the TX Complete flag by writing a 1 to it
+UCSRA = UCSRA | ( 1 &lt;&lt; TXC );
+// Wait until transmit buffer is ready
+while( !( UCSRA &amp; ( 1 &lt;&lt; UDRE ) ) )
+  ; // Spin-lock
+// Send the byte
+UDR = byte;
+</code></pre>
+
+<p>  }
+  unsigned char USART_RX( void ) {</p>
+
+<pre><code>// Wait until receive buffer is ready
+while( !( UCSRA &amp; ( 1 &lt;&lt; RXC ) ) )
+  ; // Spin-lock
+// Send the byte
+return UDR;
+</code></pre>
+
+<p>  }
+```</p>
+]]></content>
+  </entry>
+  
+</feed>
