@@ -110,8 +110,8 @@ The code to configure the USART interface is straightforward from the data sheet
 ``` c Configure the USART to Communicate with the Smart Card 
   void init_USART_9600(void) {
     // Baud rate
-    // UBRR = f_osc/(16*baud) â€“ 1
-    // For 9600Hz, UBRR ~= 129.2 = 20000000/(16*9600) â€“ 1
+    // UBRR = f_osc/(16*baud) - 1
+    // For 9600Hz, UBRR ~= 129.2 = 20000000/(16*9600) - 1
     UBRRH = 0;
     UBRRL = 230; // 129 didn't look right on the oscilloscope. 230 works well.
     // Set frame format: 8data, 1stop bit, even parity
