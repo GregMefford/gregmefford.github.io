@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Signal Processing with R - acts_as_engineer</title>
+  <meta name="author" content="Greg Mefford">
+
+  
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://www.gregmefford.com/blog/2010/06/25/signal-processing-with-r">
+  <link href="/favicon.png" type="image/png" rel="icon">
+  <link href="/atom.xml" rel="alternate" title="acts_as_engineer" type="application/atom+xml">
+
+  <link href="/assets/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+<link href="/assets/bootstrap/dist/css/bootstrap-theme.min.css" rel="stylesheet" type="text/css">
+<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+
+
+  <script src="/javascripts/libs/jquery/jquery-2.0.3.min.js"></script>
+  
+
+</head>
+
+  <body   >
+    <div id="wrap">
+      <header role="banner">
+        <nav class="navbar navbar-default" role="navigation">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">acts_as_engineer</a>
+        </div>
+
+        <div class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                <li class="active">
+                    <a href="/">Blog</a>
+                </li>
+                <li >
+                    <a href="/blog/archives">Archives</a>
+                </li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a class="subscribe-rss" href="/atom.xml" title="subscribe via RSS">
+                        <span class="visible-xs">RSS</span>
+                        <img class="hidden-xs" src="/images/rss.png" alt="RSS">
+                    </a>
+                </li>
+                
+            </ul>
+            
+                <form class="search navbar-form navbar-right" action="https://www.google.com/search" method="GET">
+                    <input type="hidden" name="q" value="site:www.gregmefford.com">
+                    <div class="form-group">
+                        <input class="form-control" type="text" name="q" placeholder="Search">
+                    </div>
+                </form>
+            
+        </div>
+    </div>
+</nav>
+
+
+      </header>
+      <div id="main" class="container">
+        <div id="content">
+          <div class="row">
+  <div class="page-content col-md-9">
+    <article class="hentry" role="article">
+      
+  <header class="page-header">
+    
+      <p class="meta text-muted text-uppercase">
+        
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="glyphicon glyphicon-calendar"></span> <time datetime="2010-06-25T14:40:39-04:00" pubdate data-updated="true">2010-06-25</time>
+        
+      </p>
+    
+    
+    <h1 class="entry-title">
+        Signal Processing With R
+        
+    </h1>
+    
+  </header>
+
+
+<div class="entry-content clearfix"><p>I have been meaning to check out <a href="http://www.r-project.org/">R</a> for a few years now, but I got busy and I just never got around to doing much more than installing the MacOS X version on my laptop.
+I finally got my excuse to try it when I needed to start working on signal processing of the measurements I had been gathering.
+My usual go-to tool for this type of task was <a href="http://www.mathworks.com/">MATLAB</a>.
+However, on this fateful day, when I tried to launch my copy of MATLAB, I got some kind of message saying that I needed to renew my license.
+At some point in the past, I had bought a one-year student edition of MATLAB, so this wasn&rsquo;t a huge surprise.
+However, that message was all it took to get me to finally check out R.</p>
+
+<!-- more -->
+
+
+<h2>What is R?</h2>
+
+<p>Despite its rather silly name, R is a phenominal piece of software for analyzing data and generating high-quality charts and graphs.
+It has a great user community, extensions to support just about any kind of data analysis you can think of, and best of all, it&rsquo;s free (as in &ldquo;free beer&rdquo; as well as &ldquo;free speech&rdquo;).
+R offers a variety of functions for statistical analysis and signal processing of large data sets.</p>
+
+<h2>Problem Description</h2>
+
+<p>The data set to be analyzed is a set of measurements from an oscilloscope.
+Each measurement represents a trace of the same analog signal, but they are not time-aligned and each has a considerable amount of noise.
+The goal of this experiment is to time-align these data samples and perform some statistical analysis on them to pull some kind of signal out of the noise.</p>
+
+<h2>Loading the Data</h2>
+
+<p>The first task in any data-processing pipeline is the mundane step of importing the raw data from the data source into the data processing tool.
+In this case, the data source is the Agilent oscilloscope being used to gather the measurements by converting the continuous-time analog signal of interest into a series of digital samples with 8 bits of resolution.
+The wave forms are saved in &ldquo;segmented time&rdquo; mode so that multiple traces can be acquired in the oscilloscope before performing the alignment and statistical analysis.
+These segmented time acquisitions are saved as a tab-delimited file with a tabular structure.
+Each column of data represents a memory segment, which is a single trace.
+Each trace consists of approximately 25,000 samples, stored as rows in the data file.</p>
+
+<p>To load this type of data file into R and convert a trace into a time series for plotting and manipulation, the process is very straightforward:</p>
+
+<figure class='code'><figcaption><span>Reading a CSV file</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>traces <span class="o">&lt;-</span> read.table<span class="p">(</span><span class="s">&quot;16traces.txt&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It took me a while to figure out how to set up the margins on the plot, but it turns out to be simple once you find the proper command to set the graphics defaults.
+<code>mar(bottom, left, top, right)</code> sets the margins around the plot, and <code>mgp(title, x, y)</code> sets the margin lines for the title and axes.</p>
+
+<figure class='code'><figcaption><span>Formatting and Plotting a Time Series</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>plot<span class="p">(</span>timeseries<span class="p">,</span> main<span class="o">=</span><span class="s">&quot;Single Raw Trace&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Plotting to a PNG image is also possible, with the result following:</p>
+
+<figure class='code'><figcaption><span>Plotting to a PNG Image File</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>png<span class="p">(</span><span class="s">&quot;single_raw_trace.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">200</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>  plot<span class="p">(</span>timeseries<span class="p">,</span> main<span class="o">=</span><span class="s">&quot;Single Raw Trace&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span><span class="p">)</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/single_raw_trace.png" title="A single time-series measurement" ></p>
+
+<h2>Simplifying the Data</h2>
+
+<p>Now that we have the basics laid out, onward to some real work.</p>
+
+<p>The first step needed to process the measurements is to smooth out the data to allow the lower-frequency features to be more visible.
+To do this, I am going to use R&rsquo;s <code>lowess</code> function.
+The best way to describe what this does is with an example:</p>
+
+<figure class='code'><figcaption><span>Demonstrating Lowess Smoothing</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>png<span class="p">(</span><span class="s">&quot;lowess_smoothing.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">200</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>  plot<span class="p">(</span>timeseries<span class="p">,</span> col<span class="o">=</span><span class="s">&quot;grey&quot;</span><span class="p">,</span>
+</span><span class='line'>    main<span class="o">=</span><span class="s">&quot;Lowess Smoothing&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'>  lines<span class="p">(</span>lowess<span class="p">(</span>timeseries<span class="p">,</span> f<span class="o">=</span><span class="m">.07</span><span class="p">))</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/lowess_smoothing.png" title="Lowess Smoothing" ></p>
+
+<h2>Alignment</h2>
+
+<p>The next step is pure magic.</p>
+
+<p>What we need to do is align each measurement trace collected so that corresponding features can be compared and analyzed.
+The plan is to use R&rsquo;s <code>ccf</code> function, which plots the correlation between two functions vs. the lag between them.</p>
+
+<figure class='code'><figcaption><span>Correlating Two Traces while Varying the Lag Between Signals</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>ts1.low <span class="o">=</span> lowess<span class="p">(</span>ts<span class="p">(</span>traces<span class="p">[</span><span class="o">&lt;</span>sup class<span class="o">=</span><span class="s">&quot;footnote&quot;</span><span class="o">&gt;&lt;</span>a href<span class="o">=</span><span class="s">&quot;#fn1&quot;</span><span class="o">&gt;</span><span class="m">1</span><span class="o">&lt;/</span>a<span class="o">&gt;&lt;/</span>sup<span class="o">&gt;</span><span class="p">]),</span> f<span class="o">=</span><span class="m">.07</span><span class="p">)</span>
+</span><span class='line'>ts5.low <span class="o">=</span> lowess<span class="p">(</span>ts<span class="p">(</span>traces<span class="p">[</span><span class="o">&lt;</span>sup class<span class="o">=</span><span class="s">&quot;footnote&quot;</span><span class="o">&gt;&lt;</span>a href<span class="o">=</span><span class="s">&quot;#fn5&quot;</span><span class="o">&gt;</span><span class="m">5</span><span class="o">&lt;/</span>a<span class="o">&gt;&lt;/</span>sup<span class="o">&gt;</span><span class="p">]),</span> f<span class="o">=</span><span class="m">.07</span><span class="p">)</span>
+</span><span class='line'>png<span class="p">(</span><span class="s">&quot;correlation_t1_t5.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">400</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">4</span><span class="p">,</span> <span class="m">4</span><span class="p">,</span> <span class="m">4</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">1</span><span class="p">,</span> <span class="m">1</span><span class="p">))</span>
+</span><span class='line'>  plot<span class="p">(</span>
+</span><span class='line'>    ccf<span class="p">(</span>ts1.low<span class="o">$</span>y<span class="p">,</span> ts5.low<span class="o">$</span>y<span class="p">,</span> lag.max<span class="o">=</span>length<span class="p">(</span>ts1<span class="p">)</span><span class="o">/</span><span class="m">2</span><span class="p">),</span>
+</span><span class='line'>    main<span class="o">=</span><span class="s">&quot;Correlation: Trace 1 vs Trace 5&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Lag&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Correlation&quot;</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/correlation_t1_t5.png" title="Correlation: Trace 1 vs Trace 5" ></p>
+
+<p>This plot is neat to look at, but what we really want is to find the absolute maximum of this function, which represents the offset that will cause the two traces to be aligned as well as possible.</p>
+
+<figure class='code'><figcaption><span>Finding the Lag Value that Maximizes Correlation</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>  results <span class="o">=</span> ccf<span class="p">(</span>ts1.low<span class="o">$</span>y<span class="p">,</span> ts5.low<span class="o">$</span>y<span class="p">,</span> lag.max<span class="o">=</span>length<span class="p">(</span>ts1<span class="p">)</span><span class="o">/</span><span class="m">2</span><span class="p">)</span>
+</span><span class='line'>  results<span class="o">$</span>lag<span class="p">[</span>which.max<span class="p">(</span>results<span class="o">$</span>acf<span class="p">)]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The preceding code returns <code>536</code> for the data shown here, which passes the &ldquo;sniff-test&rdquo; according to the plot of the <code>ccf</code> function shown in the previous section.</p>
+
+<p>If we lag the second plot using this amount, they should line up:</p>
+
+<figure class='code'><figcaption><span>Plotting the Two Traces Using the Maximum-Correlation Lag Value</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>png<span class="p">(</span><span class="s">&quot;auto-aligned_traces.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">400</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>  best_lag <span class="o">=</span> results<span class="o">$</span>lag<span class="p">[</span>which.max<span class="p">(</span>results<span class="o">$</span>acf<span class="p">)]</span>
+</span><span class='line'>  ts1.lagged.low <span class="o">=</span> lowess<span class="p">(</span>lag<span class="p">(</span>ts1<span class="p">,</span> best_lag<span class="p">),</span> f<span class="o">=</span><span class="m">.07</span><span class="p">)</span>
+</span><span class='line'>  plot<span class="p">(</span>ts1.lagged.low<span class="p">,</span> col<span class="o">=</span><span class="s">&quot;grey&quot;</span><span class="p">,</span>
+</span><span class='line'>    main<span class="o">=</span><span class="s">&quot;Auto-Aligned Traces&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'>  lines<span class="p">(</span>ts5.low<span class="p">)</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/auto-aligned_traces.png" title="Auto-Aligned Traces" ></p>
+
+<p>This code starts to get pretty ugly, but the resulting figure shows just how nicely-aligned these features are, using a more fine-grained smoothing function to show a bit more detail:</p>
+
+<figure class='code'><figcaption><span>Plotting the Aligned Traces with Less Smoothing</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>png<span class="p">(</span><span class="s">&quot;hires_aligned_traces.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">200</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>  ts1.low <span class="o">=</span> lowess<span class="p">(</span>ts1<span class="p">,</span> delta<span class="o">=</span><span class="m">10</span><span class="p">,</span> f<span class="o">=</span><span class="m">.01</span><span class="p">)</span>
+</span><span class='line'>  ts5.low <span class="o">=</span> lowess<span class="p">(</span>ts5<span class="p">,</span> delta<span class="o">=</span><span class="m">10</span><span class="p">,</span> f<span class="o">=</span><span class="m">.01</span><span class="p">)</span>
+</span><span class='line'>  ts1.aligned <span class="o">=</span> ts<span class="p">(</span>ts1.low<span class="o">$</span>y<span class="p">[</span>best_lag<span class="o">:</span>length<span class="p">(</span>ts1.lagged.low<span class="o">$</span>y<span class="p">)])</span>
+</span><span class='line'>  ts5.aligned <span class="o">=</span> ts<span class="p">(</span>ts5.low<span class="o">$</span>y<span class="p">)</span>
+</span><span class='line'>  plot<span class="p">(</span>ts1.aligned<span class="p">,</span> col<span class="o">=</span><span class="s">&quot;grey&quot;</span><span class="p">,</span>
+</span><span class='line'>    main<span class="o">=</span><span class="s">&quot;High-Resolution Auto-Aligned Traces&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'>  lines<span class="p">(</span>ts5.aligned<span class="p">)</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/hires_aligned_traces.png" title="High-Resolution Auto-Aligned Traces" ></p>
+
+<p>That&rsquo;s all for now!
+Coming up next time: cropping out just the interesting part of all the traces to build up a useful data set.</p>
+</div>
+
+
+      <footer>
+        <p class="meta text-muted">
+          
+  
+
+<span class="glyphicon glyphicon-user"></span> <span class="byline author vcard">Posted by <span class="fn">Greg Mefford</span></span>
+
+          
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="glyphicon glyphicon-calendar"></span> <time datetime="2010-06-25T14:40:39-04:00" pubdate data-updated="true">2010-06-25</time>
+          
+
+<span class="glyphicon glyphicon-tags"></span>&nbsp;
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hardware/'>Hardware</a>, <a class='category' href='/blog/categories/measurements/'>Measurements</a>, <a class='category' href='/blog/categories/r/'>R</a>, <a class='category' href='/blog/categories/signal-processing/'>Signal Processing</a>, <a class='category' href='/blog/categories/software/'>Software</a>
+  
+</span>
+
+
+        </p>
+        
+          <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://www.gregmefford.com/blog/2010/06/25/signal-processing-with-r/" data-via="ferggo" data-counturl="http://www.gregmefford.com/blog/2010/06/25/signal-processing-with-r/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+        
+        
+          <ul class="meta text-muted pager">
+            
+            <li class="previous"><a href="/blog/2010/06/05/avr-meet-smart-card/" title="Previous Post: AVR, Meet Smart Card">&laquo; AVR, Meet Smart Card</a></li>
+            
+            
+          </ul>
+        
+      </footer>
+    </article>
+    
+  </div>
+
+  
+  <aside class="sidebar col-md-3">
+    
+      <section class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">Recent Posts</h3>
+  </div>
+  
+  <div id="recent_posts" class="list-group">
+    
+    <a class="list-group-item active" href="/blog/2010/06/25/signal-processing-with-r/">Signal Processing With R</a>
+    
+    <a class="list-group-item " href="/blog/2010/06/05/avr-meet-smart-card/">AVR, Meet Smart Card</a>
+    
+  </div>
+</section>
+
+<section class="panel panel-default clearfix">
+  <div class="panel-heading">
+      <h3 class="panel-title">GitHub Repos</h3>
+  </div>
+  <div class="list-group" id="gh_repos">
+    <p class="loading">Status updating...</p>
+  </div>
+  
+    <div class="gh-profile-link pull-right text-muted">
+      <a href="https://github.com/GregMefford">@GregMefford</a> on GitHub
+    </div>
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'GregMefford',
+            count: 5,
+            skip_forks: false,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+
+    
+  </aside>
+  
+</div>
+
+        </div>
+      </div>
+    </div>
+    <footer role="contentinfo"><div class="container">
+    <p class="text-muted credits">
+  Copyright &copy; 2014 - Greg Mefford<br>
+  <small>
+      <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>,
+      <span class="credit">customized with <a href="https://github.com/kAworu/octostrap3">octostrap3</a></span>.
+  </small>
+</p>
+
+</div>
+</footer>
+    <script src="/assets/bootstrap/dist/js/bootstrap.min.js"></script>
+<script src="/javascripts/modernizr-2.0.js"></script>
+
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+  </body>
+</html>
