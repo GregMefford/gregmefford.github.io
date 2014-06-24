@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Book | acts_as_engineer]]></title>
+  <link href="http://www.gregmefford.com/blog/categories/book/atom.xml" rel="self"/>
+  <link href="http://www.gregmefford.com/"/>
+  <updated>2014-06-23T23:38:37-04:00</updated>
+  <id>http://www.gregmefford.com/</id>
+  <author>
+    <name><![CDATA[Greg Mefford]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Review: The Passionate Programmer]]></title>
+    <link href="http://www.gregmefford.com/blog/2011/02/06/review-the-passionate-programmer/"/>
+    <updated>2011-02-06T22:31:00-05:00</updated>
+    <id>http://www.gregmefford.com/blog/2011/02/06/review-the-passionate-programmer</id>
+    <content type="html"><![CDATA[<p>This afternoon, I finished <a href="http://twitter.com/chadfowler">@chadfowler</a>&rsquo;s <a href="http://amzn.com/1934356344"><a href="http://amzn.com/1934356344">The Passionate Programmer</a>.
+One of my favorite books is <a href="http://amzn.com/020161622X">The Pragmatic Programmer</a>, so the similar title of this book (and the author, who I follow on <a href="http://twitter.com/ferggo">Twitter</a>) caught my eye.
+I read a lot of hype about it leading up to its release and I was not disappointed!
+Besides echoing <a href="http://illusional-mind.blogspot.com/2011/02/chad-fowler-passionate-programmer.html">many</a> <a href="http://elegantcode.com/2009/11/29/review-the-passionate-programmer/">other</a> <a href="http://vodra.wordpress.com/2011/01/11/book-review-the-passionate-programmer-by-chad-fowler/">reviewers'</a> <a href="http://suhinini.blogspot.com/2010/01/book-review-passionate-programmer-by.html">exhortation</a> to go pick up the book and read it if you care about your career, I thought it would be valuable to capture in text some of my thoughts, gathered while reading this book.</p>
+
+<!-- more -->
+
+
+<h2>Why You Should Read This Book</h2>
+
+<p>The reason I ordered this book in the first place is that I am passionate about software development and about making the most of my career in technology.
+This book is both inspirational and pragmatic (as the name of the publisher would imply).
+Each chapter is a bite-sized discussion of a single aspect of improving yourself as a contributing member of the industry.
+At the end of each chapter, there is an &ldquo;Act On It!&rdquo; section that gives some concrete things I can think about or do today to be better at what I do.
+If you really care about what you do, read this book.
+Even if what you do isn&rsquo;t software development, there is a lot of value here for everyone.</p>
+
+<h2>What I Got Out of It</h2>
+
+<h3>Things I was already doing that were validated:</h3>
+
+<ul>
+<li>Participating in Open Source (Reading others' code and contributing my own)</li>
+<li>Striving to only work 40 hours per week</li>
+<li>Practicing my craft outside of business hours</li>
+<li>Exploring the bleeding edge of tomorrow&rsquo;s hot technologies</li>
+</ul>
+
+
+<h3>Things I immediately started doing after reading about them:</h3>
+
+<ul>
+<li>Learning more about how the business really works (what impacts the bottom-line?)</li>
+<li>Practice writing more (here I am writing a blog post after far too long)</li>
+<li>Recording commitments and tracking them to completion</li>
+</ul>
+
+
+<h3>Things I have been putting off that I&rsquo;m going to really start doing</h3>
+
+<ul>
+<li>Learn by teaching</li>
+<li>&ldquo;Be the worst&rdquo; by striving to work with the best</li>
+<li>Go deeper into understanding the technologies I use</li>
+<li>Use this blog as a capture-point for research to remind my future self</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>
