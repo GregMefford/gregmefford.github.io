@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: R | acts_as_engineer]]></title>
+  <link href="http://www.gregmefford.com/blog/categories/r/atom.xml" rel="self"/>
+  <link href="http://www.gregmefford.com/"/>
+  <updated>2014-06-23T23:38:37-04:00</updated>
+  <id>http://www.gregmefford.com/</id>
+  <author>
+    <name><![CDATA[Greg Mefford]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Signal Processing with R]]></title>
+    <link href="http://www.gregmefford.com/blog/2010/06/25/signal-processing-with-r/"/>
+    <updated>2010-06-25T14:40:39-04:00</updated>
+    <id>http://www.gregmefford.com/blog/2010/06/25/signal-processing-with-r</id>
+    <content type="html"><![CDATA[<p>I have been meaning to check out <a href="http://www.r-project.org/">R</a> for a few years now, but I got busy and I just never got around to doing much more than installing the MacOS X version on my laptop.
+I finally got my excuse to try it when I needed to start working on signal processing of the measurements I had been gathering.
+My usual go-to tool for this type of task was <a href="http://www.mathworks.com/">MATLAB</a>.
+However, on this fateful day, when I tried to launch my copy of MATLAB, I got some kind of message saying that I needed to renew my license.
+At some point in the past, I had bought a one-year student edition of MATLAB, so this wasn&rsquo;t a huge surprise.
+However, that message was all it took to get me to finally check out R.</p>
+
+<!-- more -->
+
+
+<h2>What is R?</h2>
+
+<p>Despite its rather silly name, R is a phenominal piece of software for analyzing data and generating high-quality charts and graphs.
+It has a great user community, extensions to support just about any kind of data analysis you can think of, and best of all, it&rsquo;s free (as in &ldquo;free beer&rdquo; as well as &ldquo;free speech&rdquo;).
+R offers a variety of functions for statistical analysis and signal processing of large data sets.</p>
+
+<h2>Problem Description</h2>
+
+<p>The data set to be analyzed is a set of measurements from an oscilloscope.
+Each measurement represents a trace of the same analog signal, but they are not time-aligned and each has a considerable amount of noise.
+The goal of this experiment is to time-align these data samples and perform some statistical analysis on them to pull some kind of signal out of the noise.</p>
+
+<h2>Loading the Data</h2>
+
+<p>The first task in any data-processing pipeline is the mundane step of importing the raw data from the data source into the data processing tool.
+In this case, the data source is the Agilent oscilloscope being used to gather the measurements by converting the continuous-time analog signal of interest into a series of digital samples with 8 bits of resolution.
+The wave forms are saved in &ldquo;segmented time&rdquo; mode so that multiple traces can be acquired in the oscilloscope before performing the alignment and statistical analysis.
+These segmented time acquisitions are saved as a tab-delimited file with a tabular structure.
+Each column of data represents a memory segment, which is a single trace.
+Each trace consists of approximately 25,000 samples, stored as rows in the data file.</p>
+
+<p>To load this type of data file into R and convert a trace into a time series for plotting and manipulation, the process is very straightforward:</p>
+
+<p><code>r Reading a CSV file
+traces &lt;- read.table("16traces.txt")
+</code></p>
+
+<p>It took me a while to figure out how to set up the margins on the plot, but it turns out to be simple once you find the proper command to set the graphics defaults.
+<code>mar(bottom, left, top, right)</code> sets the margins around the plot, and <code>mgp(title, x, y)</code> sets the margin lines for the title and axes.</p>
+
+<p><code>r Formatting and Plotting a Time Series
+par(mar=c(3, 3, 3, 1), mgp=c(1, 0, 0), xaxt="n", yaxt="n")
+plot(timeseries, main="Single Raw Trace", xlab="Time", ylab="Current")
+</code></p>
+
+<p>Plotting to a PNG image is also possible, with the result following:</p>
+
+<p><code>r Plotting to a PNG Image File
+png("single_raw_trace.png", width=600, height=200)
+  par(mar=c(3, 3, 3, 1), mgp=c(1, 0, 0), xaxt="n", yaxt="n")
+  plot(timeseries, main="Single Raw Trace", xlab="Time", ylab="Current")
+dev.off()
+</code></p>
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/single_raw_trace.png" title="A single time-series measurement" ></p>
+
+<h2>Simplifying the Data</h2>
+
+<p>Now that we have the basics laid out, onward to some real work.</p>
+
+<p>The first step needed to process the measurements is to smooth out the data to allow the lower-frequency features to be more visible.
+To do this, I am going to use R&rsquo;s <code>lowess</code> function.
+The best way to describe what this does is with an example:</p>
+
+<p>``` r Demonstrating Lowess Smoothing
+png(&ldquo;lowess_smoothing.png&rdquo;, width=600, height=200)
+  par(mar=c(3, 3, 3, 1), mgp=c(1, 0, 0), xaxt=&ldquo;n&rdquo;, yaxt=&ldquo;n&rdquo;)
+  plot(timeseries, col=&ldquo;grey&rdquo;,</p>
+
+<pre><code>main="Lowess Smoothing", xlab="Time", ylab="Current"
+</code></pre>
+
+<p>  )
+  lines(lowess(timeseries, f=.07))
+dev.off()
+```</p>
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/lowess_smoothing.png" title="Lowess Smoothing" ></p>
+
+<h2>Alignment</h2>
+
+<p>The next step is pure magic.</p>
+
+<p>What we need to do is align each measurement trace collected so that corresponding features can be compared and analyzed.
+The plan is to use R&rsquo;s <code>ccf</code> function, which plots the correlation between two functions vs. the lag between them.</p>
+
+<p>``` r Correlating Two Traces while Varying the Lag Between Signals
+ts1.low = lowess(ts(traces[<sup class="footnote"><a href="#fn1">1</a></sup>]), f=.07)
+ts5.low = lowess(ts(traces[<sup class="footnote"><a href="#fn5">5</a></sup>]), f=.07)
+png(&ldquo;correlation_t1_t5.png&rdquo;, width=600, height=400)
+  par(mar=c(4, 4, 4, 1), mgp=c(1, 1, 1))
+  plot(</p>
+
+<pre><code>ccf(ts1.low$y, ts5.low$y, lag.max=length(ts1)/2),
+main="Correlation: Trace 1 vs Trace 5", xlab="Lag", ylab="Correlation"
+</code></pre>
+
+<p>  )
+dev.off()
+```</p>
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/correlation_t1_t5.png" title="Correlation: Trace 1 vs Trace 5" ></p>
+
+<p>This plot is neat to look at, but what we really want is to find the absolute maximum of this function, which represents the offset that will cause the two traces to be aligned as well as possible.</p>
+
+<p><code>r Finding the Lag Value that Maximizes Correlation
+  results = ccf(ts1.low$y, ts5.low$y, lag.max=length(ts1)/2)
+  results$lag[which.max(results$acf)]
+</code></p>
+
+<p>The preceding code returns <code>536</code> for the data shown here, which passes the &ldquo;sniff-test&rdquo; according to the plot of the <code>ccf</code> function shown in the previous section.</p>
+
+<p>If we lag the second plot using this amount, they should line up:</p>
+
+<p>``` r Plotting the Two Traces Using the Maximum-Correlation Lag Value
+png(&ldquo;auto-aligned_traces.png&rdquo;, width=600, height=400)
+  par(mar=c(3, 3, 3, 1), mgp=c(1, 0, 0), xaxt=&ldquo;n&rdquo;, yaxt=&ldquo;n&rdquo;)
+  best_lag = results$lag[which.max(results$acf)]
+  ts1.lagged.low = lowess(lag(ts1, best_lag), f=.07)
+  plot(ts1.lagged.low, col=&ldquo;grey&rdquo;,</p>
+
+<pre><code>main="Auto-Aligned Traces", xlab="Time", ylab="Current"
+</code></pre>
+
+<p>  )
+  lines(ts5.low)
+dev.off()
+```</p>
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/auto-aligned_traces.png" title="Auto-Aligned Traces" ></p>
+
+<p>This code starts to get pretty ugly, but the resulting figure shows just how nicely-aligned these features are, using a more fine-grained smoothing function to show a bit more detail:</p>
+
+<p>``` r Plotting the Aligned Traces with Less Smoothing
+png(&ldquo;hires_aligned_traces.png&rdquo;, width=600, height=200)
+  par(mar=c(3, 3, 3, 1), mgp=c(1, 0, 0), xaxt=&ldquo;n&rdquo;, yaxt=&ldquo;n&rdquo;)
+  ts1.low = lowess(ts1, delta=10, f=.01)
+  ts5.low = lowess(ts5, delta=10, f=.01)
+  ts1.aligned = ts(ts1.low$y[best_lag:length(ts1.lagged.low$y)])
+  ts5.aligned = ts(ts5.low$y)
+  plot(ts1.aligned, col=&ldquo;grey&rdquo;,</p>
+
+<pre><code>main="High-Resolution Auto-Aligned Traces", xlab="Time", ylab="Current"
+</code></pre>
+
+<p>  )
+  lines(ts5.aligned)
+dev.off()
+```</p>
+
+<p><img class="center" src="/images/posts/2010-06-25-signal-processing-with-r/hires_aligned_traces.png" title="High-Resolution Auto-Aligned Traces" ></p>
+
+<p>That&rsquo;s all for now!
+Coming up next time: cropping out just the interesting part of all the traces to build up a useful data set.</p>
+]]></content>
+  </entry>
+  
+</feed>

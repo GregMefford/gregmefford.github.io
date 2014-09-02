@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[acts_as_engineer]]></title>
+  <link href="http://www.gregmefford.com/atom.xml" rel="self"/>
+  <link href="http://www.gregmefford.com/"/>
+  <updated>2014-06-23T23:38:37-04:00</updated>
+  <id>http://www.gregmefford.com/</id>
+  <author>
+    <name><![CDATA[Greg Mefford]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Review: The Passionate Programmer]]></title>
+    <link href="http://www.gregmefford.com/blog/2011/02/06/review-the-passionate-programmer/"/>
+    <updated>2011-02-06T22:31:00-05:00</updated>
+    <id>http://www.gregmefford.com/blog/2011/02/06/review-the-passionate-programmer</id>
+    <content type="html"><![CDATA[<p>This afternoon, I finished <a href="http://twitter.com/chadfowler">@chadfowler</a>&rsquo;s <a href="http://amzn.com/1934356344"><a href="http://amzn.com/1934356344">The Passionate Programmer</a>.
+One of my favorite books is <a href="http://amzn.com/020161622X">The Pragmatic Programmer</a>, so the similar title of this book (and the author, who I follow on <a href="http://twitter.com/ferggo">Twitter</a>) caught my eye.
+I read a lot of hype about it leading up to its release and I was not disappointed!
+Besides echoing <a href="http://illusional-mind.blogspot.com/2011/02/chad-fowler-passionate-programmer.html">many</a> <a href="http://elegantcode.com/2009/11/29/review-the-passionate-programmer/">other</a> <a href="http://vodra.wordpress.com/2011/01/11/book-review-the-passionate-programmer-by-chad-fowler/">reviewers&#8217;</a> <a href="http://suhinini.blogspot.com/2010/01/book-review-passionate-programmer-by.html">exhortation</a> to go pick up the book and read it if you care about your career, I thought it would be valuable to capture in text some of my thoughts, gathered while reading this book.</p>
+
+<!-- more -->
+
+
+<h2>Why You Should Read This Book</h2>
+
+<p>The reason I ordered this book in the first place is that I am passionate about software development and about making the most of my career in technology.
+This book is both inspirational and pragmatic (as the name of the publisher would imply).
+Each chapter is a bite-sized discussion of a single aspect of improving yourself as a contributing member of the industry.
+At the end of each chapter, there is an &ldquo;Act On It!&rdquo; section that gives some concrete things I can think about or do today to be better at what I do.
+If you really care about what you do, read this book.
+Even if what you do isn&rsquo;t software development, there is a lot of value here for everyone.</p>
+
+<h2>What I Got Out of It</h2>
+
+<h3>Things I was already doing that were validated:</h3>
+
+<ul>
+<li>Participating in Open Source (Reading others&#8217; code and contributing my own)</li>
+<li>Striving to only work 40 hours per week</li>
+<li>Practicing my craft outside of business hours</li>
+<li>Exploring the bleeding edge of tomorrow&rsquo;s hot technologies</li>
+</ul>
+
+
+<h3>Things I immediately started doing after reading about them:</h3>
+
+<ul>
+<li>Learning more about how the business really works (what impacts the bottom-line?)</li>
+<li>Practice writing more (here I am writing a blog post after far too long)</li>
+<li>Recording commitments and tracking them to completion</li>
+</ul>
+
+
+<h3>Things I have been putting off that I&rsquo;m going to really start doing</h3>
+
+<ul>
+<li>Learn by teaching</li>
+<li>&ldquo;Be the worst&rdquo; by striving to work with the best</li>
+<li>Go deeper into understanding the technologies I use</li>
+<li>Use this blog as a capture-point for research to remind my future self</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Signal Processing with R]]></title>
+    <link href="http://www.gregmefford.com/blog/2010/06/25/signal-processing-with-r/"/>
+    <updated>2010-06-25T14:40:39-04:00</updated>
+    <id>http://www.gregmefford.com/blog/2010/06/25/signal-processing-with-r</id>
+    <content type="html"><![CDATA[<p>I have been meaning to check out <a href="http://www.r-project.org/">R</a> for a few years now, but I got busy and I just never got around to doing much more than installing the MacOS X version on my laptop.
+I finally got my excuse to try it when I needed to start working on signal processing of the measurements I had been gathering.
+My usual go-to tool for this type of task was <a href="http://www.mathworks.com/">MATLAB</a>.
+However, on this fateful day, when I tried to launch my copy of MATLAB, I got some kind of message saying that I needed to renew my license.
+At some point in the past, I had bought a one-year student edition of MATLAB, so this wasn&rsquo;t a huge surprise.
+However, that message was all it took to get me to finally check out R.</p>
+
+<!-- more -->
+
+
+<h2>What is R?</h2>
+
+<p>Despite its rather silly name, R is a phenominal piece of software for analyzing data and generating high-quality charts and graphs.
+It has a great user community, extensions to support just about any kind of data analysis you can think of, and best of all, it&rsquo;s free (as in &ldquo;free beer&rdquo; as well as &ldquo;free speech&rdquo;).
+R offers a variety of functions for statistical analysis and signal processing of large data sets.</p>
+
+<h2>Problem Description</h2>
+
+<p>The data set to be analyzed is a set of measurements from an oscilloscope.
+Each measurement represents a trace of the same analog signal, but they are not time-aligned and each has a considerable amount of noise.
+The goal of this experiment is to time-align these data samples and perform some statistical analysis on them to pull some kind of signal out of the noise.</p>
+
+<h2>Loading the Data</h2>
+
+<p>The first task in any data-processing pipeline is the mundane step of importing the raw data from the data source into the data processing tool.
+In this case, the data source is the Agilent oscilloscope being used to gather the measurements by converting the continuous-time analog signal of interest into a series of digital samples with 8 bits of resolution.
+The wave forms are saved in &ldquo;segmented time&rdquo; mode so that multiple traces can be acquired in the oscilloscope before performing the alignment and statistical analysis.
+These segmented time acquisitions are saved as a tab-delimited file with a tabular structure.
+Each column of data represents a memory segment, which is a single trace.
+Each trace consists of approximately 25,000 samples, stored as rows in the data file.</p>
+
+<p>To load this type of data file into R and convert a trace into a time series for plotting and manipulation, the process is very straightforward:</p>
+
+<figure class='code'><figcaption><span>Reading a CSV file</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>traces <span class="o">&lt;-</span> read.table<span class="p">(</span><span class="s">&quot;16traces.txt&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It took me a while to figure out how to set up the margins on the plot, but it turns out to be simple once you find the proper command to set the graphics defaults.
+<code>mar(bottom, left, top, right)</code> sets the margins around the plot, and <code>mgp(title, x, y)</code> sets the margin lines for the title and axes.</p>
+
+<figure class='code'><figcaption><span>Formatting and Plotting a Time Series</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>plot<span class="p">(</span>timeseries<span class="p">,</span> main<span class="o">=</span><span class="s">&quot;Single Raw Trace&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Plotting to a PNG image is also possible, with the result following:</p>
+
+<figure class='code'><figcaption><span>Plotting to a PNG Image File</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>png<span class="p">(</span><span class="s">&quot;single_raw_trace.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">200</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>  plot<span class="p">(</span>timeseries<span class="p">,</span> main<span class="o">=</span><span class="s">&quot;Single Raw Trace&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span><span class="p">)</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="http://www.gregmefford.com/images/posts/2010-06-25-signal-processing-with-r/single_raw_trace.png" title="A single time-series measurement" ></p>
+
+<h2>Simplifying the Data</h2>
+
+<p>Now that we have the basics laid out, onward to some real work.</p>
+
+<p>The first step needed to process the measurements is to smooth out the data to allow the lower-frequency features to be more visible.
+To do this, I am going to use R&rsquo;s <code>lowess</code> function.
+The best way to describe what this does is with an example:</p>
+
+<figure class='code'><figcaption><span>Demonstrating Lowess Smoothing</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>png<span class="p">(</span><span class="s">&quot;lowess_smoothing.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">200</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>  plot<span class="p">(</span>timeseries<span class="p">,</span> col<span class="o">=</span><span class="s">&quot;grey&quot;</span><span class="p">,</span>
+</span><span class='line'>    main<span class="o">=</span><span class="s">&quot;Lowess Smoothing&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'>  lines<span class="p">(</span>lowess<span class="p">(</span>timeseries<span class="p">,</span> f<span class="o">=</span><span class="m">.07</span><span class="p">))</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="http://www.gregmefford.com/images/posts/2010-06-25-signal-processing-with-r/lowess_smoothing.png" title="Lowess Smoothing" ></p>
+
+<h2>Alignment</h2>
+
+<p>The next step is pure magic.</p>
+
+<p>What we need to do is align each measurement trace collected so that corresponding features can be compared and analyzed.
+The plan is to use R&rsquo;s <code>ccf</code> function, which plots the correlation between two functions vs. the lag between them.</p>
+
+<figure class='code'><figcaption><span>Correlating Two Traces while Varying the Lag Between Signals</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>ts1.low <span class="o">=</span> lowess<span class="p">(</span>ts<span class="p">(</span>traces<span class="p">[</span><span class="o">&lt;</span>sup class<span class="o">=</span><span class="s">&quot;footnote&quot;</span><span class="o">&gt;&lt;</span>a href<span class="o">=</span><span class="s">&quot;#fn1&quot;</span><span class="o">&gt;</span><span class="m">1</span><span class="o">&lt;/</span>a<span class="o">&gt;&lt;/</span>sup<span class="o">&gt;</span><span class="p">]),</span> f<span class="o">=</span><span class="m">.07</span><span class="p">)</span>
+</span><span class='line'>ts5.low <span class="o">=</span> lowess<span class="p">(</span>ts<span class="p">(</span>traces<span class="p">[</span><span class="o">&lt;</span>sup class<span class="o">=</span><span class="s">&quot;footnote&quot;</span><span class="o">&gt;&lt;</span>a href<span class="o">=</span><span class="s">&quot;#fn5&quot;</span><span class="o">&gt;</span><span class="m">5</span><span class="o">&lt;/</span>a<span class="o">&gt;&lt;/</span>sup<span class="o">&gt;</span><span class="p">]),</span> f<span class="o">=</span><span class="m">.07</span><span class="p">)</span>
+</span><span class='line'>png<span class="p">(</span><span class="s">&quot;correlation_t1_t5.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">400</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">4</span><span class="p">,</span> <span class="m">4</span><span class="p">,</span> <span class="m">4</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">1</span><span class="p">,</span> <span class="m">1</span><span class="p">))</span>
+</span><span class='line'>  plot<span class="p">(</span>
+</span><span class='line'>    ccf<span class="p">(</span>ts1.low<span class="o">$</span>y<span class="p">,</span> ts5.low<span class="o">$</span>y<span class="p">,</span> lag.max<span class="o">=</span>length<span class="p">(</span>ts1<span class="p">)</span><span class="o">/</span><span class="m">2</span><span class="p">),</span>
+</span><span class='line'>    main<span class="o">=</span><span class="s">&quot;Correlation: Trace 1 vs Trace 5&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Lag&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Correlation&quot;</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="http://www.gregmefford.com/images/posts/2010-06-25-signal-processing-with-r/correlation_t1_t5.png" title="Correlation: Trace 1 vs Trace 5" ></p>
+
+<p>This plot is neat to look at, but what we really want is to find the absolute maximum of this function, which represents the offset that will cause the two traces to be aligned as well as possible.</p>
+
+<figure class='code'><figcaption><span>Finding the Lag Value that Maximizes Correlation</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>  results <span class="o">=</span> ccf<span class="p">(</span>ts1.low<span class="o">$</span>y<span class="p">,</span> ts5.low<span class="o">$</span>y<span class="p">,</span> lag.max<span class="o">=</span>length<span class="p">(</span>ts1<span class="p">)</span><span class="o">/</span><span class="m">2</span><span class="p">)</span>
+</span><span class='line'>  results<span class="o">$</span>lag<span class="p">[</span>which.max<span class="p">(</span>results<span class="o">$</span>acf<span class="p">)]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The preceding code returns <code>536</code> for the data shown here, which passes the &ldquo;sniff-test&rdquo; according to the plot of the <code>ccf</code> function shown in the previous section.</p>
+
+<p>If we lag the second plot using this amount, they should line up:</p>
+
+<figure class='code'><figcaption><span>Plotting the Two Traces Using the Maximum-Correlation Lag Value</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>png<span class="p">(</span><span class="s">&quot;auto-aligned_traces.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">400</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>  best_lag <span class="o">=</span> results<span class="o">$</span>lag<span class="p">[</span>which.max<span class="p">(</span>results<span class="o">$</span>acf<span class="p">)]</span>
+</span><span class='line'>  ts1.lagged.low <span class="o">=</span> lowess<span class="p">(</span>lag<span class="p">(</span>ts1<span class="p">,</span> best_lag<span class="p">),</span> f<span class="o">=</span><span class="m">.07</span><span class="p">)</span>
+</span><span class='line'>  plot<span class="p">(</span>ts1.lagged.low<span class="p">,</span> col<span class="o">=</span><span class="s">&quot;grey&quot;</span><span class="p">,</span>
+</span><span class='line'>    main<span class="o">=</span><span class="s">&quot;Auto-Aligned Traces&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'>  lines<span class="p">(</span>ts5.low<span class="p">)</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="http://www.gregmefford.com/images/posts/2010-06-25-signal-processing-with-r/auto-aligned_traces.png" title="Auto-Aligned Traces" ></p>
+
+<p>This code starts to get pretty ugly, but the resulting figure shows just how nicely-aligned these features are, using a more fine-grained smoothing function to show a bit more detail:</p>
+
+<figure class='code'><figcaption><span>Plotting the Aligned Traces with Less Smoothing</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='r'><span class='line'>png<span class="p">(</span><span class="s">&quot;hires_aligned_traces.png&quot;</span><span class="p">,</span> width<span class="o">=</span><span class="m">600</span><span class="p">,</span> height<span class="o">=</span><span class="m">200</span><span class="p">)</span>
+</span><span class='line'>  par<span class="p">(</span>mar<span class="o">=</span>c<span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">3</span><span class="p">,</span> <span class="m">1</span><span class="p">),</span> mgp<span class="o">=</span>c<span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="m">0</span><span class="p">),</span> xaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">,</span> yaxt<span class="o">=</span><span class="s">&quot;n&quot;</span><span class="p">)</span>
+</span><span class='line'>  ts1.low <span class="o">=</span> lowess<span class="p">(</span>ts1<span class="p">,</span> delta<span class="o">=</span><span class="m">10</span><span class="p">,</span> f<span class="o">=</span><span class="m">.01</span><span class="p">)</span>
+</span><span class='line'>  ts5.low <span class="o">=</span> lowess<span class="p">(</span>ts5<span class="p">,</span> delta<span class="o">=</span><span class="m">10</span><span class="p">,</span> f<span class="o">=</span><span class="m">.01</span><span class="p">)</span>
+</span><span class='line'>  ts1.aligned <span class="o">=</span> ts<span class="p">(</span>ts1.low<span class="o">$</span>y<span class="p">[</span>best_lag<span class="o">:</span>length<span class="p">(</span>ts1.lagged.low<span class="o">$</span>y<span class="p">)])</span>
+</span><span class='line'>  ts5.aligned <span class="o">=</span> ts<span class="p">(</span>ts5.low<span class="o">$</span>y<span class="p">)</span>
+</span><span class='line'>  plot<span class="p">(</span>ts1.aligned<span class="p">,</span> col<span class="o">=</span><span class="s">&quot;grey&quot;</span><span class="p">,</span>
+</span><span class='line'>    main<span class="o">=</span><span class="s">&quot;High-Resolution Auto-Aligned Traces&quot;</span><span class="p">,</span> xlab<span class="o">=</span><span class="s">&quot;Time&quot;</span><span class="p">,</span> ylab<span class="o">=</span><span class="s">&quot;Current&quot;</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'>  lines<span class="p">(</span>ts5.aligned<span class="p">)</span>
+</span><span class='line'>dev.off<span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="http://www.gregmefford.com/images/posts/2010-06-25-signal-processing-with-r/hires_aligned_traces.png" title="High-Resolution Auto-Aligned Traces" ></p>
+
+<p>That&rsquo;s all for now!
+Coming up next time: cropping out just the interesting part of all the traces to build up a useful data set.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AVR, Meet Smart Card]]></title>
+    <link href="http://www.gregmefford.com/blog/2010/06/05/avr-meet-smart-card/"/>
+    <updated>2010-06-05T21:19:39-04:00</updated>
+    <id>http://www.gregmefford.com/blog/2010/06/05/avr-meet-smart-card</id>
+    <content type="html"><![CDATA[<p>As a part of my MS thesis research, I have a need to have precise control over an ACS ACOS5 Smart Card.
+In this article, I will explain the code I have written to directly interface an Atmel ATtiny2313 microcontroller to an ACS ACOS5 cryptographic Smart Card.
+Before developing this AVR C code, I experimented with various other methods of interfacing with a Smart Card at a low level, with varying amounts of success.
+I will discuss some of the other methods in future articles, and outline how far I got with them and where there is still opportunity for improvement.</p>
+
+<!-- more -->
+
+
+<h2>Why a Microcontroller?</h2>
+
+<p>My requirement was to have a simple, controllable interface to a Smart Card, with minimal cost as a design goal.
+I started out trying to modify a commercial Smart Card reader to allow protocol analysis while under control of a computer.
+While I was successful in modifying the reader to provide the physical interface, the API for getting low-level access to the card turned out to be difficult.
+I decided that if I had to work with the PCSC API at the lowest level, I might as well just work from the card data sheet and implement as much of the protocol as I needed in C code for my $2 microcontroller.
+This helped me to meet my controllability requirement by having full control over each byte transmitted and recieved between the card and the microcontroller.
+It also helped me to meet a low-cost design goal by using a very inexpensive microcontroller instead of an expensive commercial reader that has been modified, plus a computer to drive it.</p>
+
+<h2>Getting Started with an AVR</h2>
+
+<p>To make prototyping simple, I bought a very helpful prototyping board for the Atmel ATtiny2313 microcontroller from <a href="http://www.evilmadscientist.com/article.php/card2313">Evil Mad Scientist</a>.
+This board is great because it provides silk-screened labels of each IO pin function and plenty of plated through-holes for soldering interface wires and simple components like power supplies, filter capacitors, and resonators.
+For connecting to a Smart Card, I picked up a Smart Card breakout board from <a href="http://www.sparkfun.com/commerce/product_info.php?products_id=9440">SparkFun Electronics</a>.
+This breakout board offers a stanrdard physical interface to slide in a Smart Card and access its pins on plated through-holes, into which I mounted a row of standard single in-line pins that I could use for breadboarding and wiring up to the microcontroller breakout board.</p>
+
+<p>To get a nice stable clock to the microcontroller (and ultimately to the Smart Card), I populated a 20 MHz ceramic resonator in the resonator footprint on the microcontroller breakout board.
+To make use of this external clock, I calculated the appropriate bits using the ATtiny2313 data sheet and programmed the fuse bits as follows:</p>
+
+<figure class='code'><figcaption><span>Configuring ATtiny2313 to Use a 20 MHz External Resonator </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="n">lfuse</span> <span class="o">=</span> <span class="mh">0xAF</span>
+</span><span class='line'><span class="n">hfuse</span> <span class="o">=</span> <span class="mh">0xDF</span>
+</span><span class='line'><span class="n">efuse</span> <span class="o">=</span> <span class="mh">0xFF</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Generating a Smart Card Clock</h2>
+
+<p>The first requirement of interfacing the microcontroller to a Smart Card is to provide the card with a stable clock between 1 MHz and 5 MHz.
+Even though the data IO interface of the ACOS5 Smart Card is asynchronous, the card requires a continuous clock on the CLK pin in order to operate.
+This was accomplished rather simply using the ATtiny2313&rsquo;s hardware PWM function.
+The PWM generator in the ATtiny2313 offers a lot of advanced features, but to simply generate a clock at a given frequency and duty cycle, most of the more advanced options are not required.
+To generate a 2 MHz clock with a 50% duty cycle, I used the following simple function, adapted from the example code given in the data sheet for using the PWM generator:</p>
+
+<figure class='code'><figcaption><span>Generate a 2 MHz Clock with 50% Duty Cycle </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="nf">init_PWM_CLK</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// Generate a clock on OC0B pin.</span>
+</span><span class='line'>  <span class="c1">// Compare Output Mode:</span>
+</span><span class='line'>  <span class="n">TCCR0A</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;&lt;</span> <span class="n">COM0B1</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">COM0B0</span><span class="p">)</span> <span class="o">|</span> <span class="c1">// Toggle OC0B on Compare Match</span>
+</span><span class='line'>           <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">WGM01</span><span class="p">)</span>  <span class="o">|</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;&lt;</span> <span class="n">WGM00</span><span class="p">);</span>   <span class="c1">// Clear Timer on Compare Match</span>
+</span><span class='line'>  <span class="n">TCCR0B</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;&lt;</span> <span class="n">CS02</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;&lt;</span> <span class="n">CS01</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">CS00</span><span class="p">);</span> <span class="c1">// IO CLK, no pre-scalar</span>
+</span><span class='line'>  <span class="n">OCR0A</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span> <span class="c1">// Freq. = 20MHz / 2*(1+ORC0A) = 2MHz</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I also made sure the data direction of the <code>OC0B</code> pin is set to output, so the clock will not default to a high-impedance input:</p>
+
+<figure class='code'><figcaption><span>Configure the OC0B Pin as an Output </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>  <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">DDRD</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">DDD5</span><span class="p">);</span> <span class="c1">// OC0B output pin</span>
+</span><span class='line'>    <span class="n">init_PWM_CLK</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Answer to Reset</h2>
+
+<p>Now that we have a clock to drive the Smart Card, the next thing to do is to perform the appropriate power-up sequence to cause the card to reset.
+When the card resets, it transmits an Answer To Reset (ATR) string.
+This string of bytes is used by commercial readers to identify the specific card being interfaced with, and describes its capabilities.
+In this case, I read the ATR with an oscilloscope just to make sure the card is properly resetting, but I do not need the AVR to do anything based on the ATR, since I know the capabilities of the ACOS5 card that I am using for my research.</p>
+
+<p>Since I do not need to actually read the bytes of the ATR sequence, I just use the following start-up sequence:</p>
+
+<figure class='code'><figcaption><span>Smart Card Start-Up Sequence </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>  <span class="c1">// Power-up procedure</span>
+</span><span class='line'>  <span class="n">set_vpp</span><span class="p">();</span>
+</span><span class='line'>  <span class="n">_delay_ms</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">set_reset</span><span class="p">();</span>
+</span><span class='line'>  <span class="n">init_USART_RX</span><span class="p">();</span>
+</span><span class='line'>  <span class="n">_delay_ms</span><span class="p">(</span><span class="mi">80</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <code>set_vpp</code> and <code>set_reset</code> functions are just convenience methods to set the respective output pins high for the <code>VPP</code> and <code>RESET</code> pads on the Smart Card.
+The <code>init_USART_RX</code> function is used to configure the built-in Universal Sychronous and Asynchronous serial Receiver and Transmitter (USART), which will be described in more detail in the following section.</p>
+
+<h2>Data IO with USART</h2>
+
+<p>A Microcontroller is a powerful tool for this type of low-level system integration because these very inexpensive processors generally come with built-in hardware support for a wide variety of serial protocols like Pulse-Width Modulation (PWM), I2C, and SPI.
+These can be implemented using the AVR&rsquo;s USART and Universial Serial Interface (USI) ports, which support varying word lengths, start bits, stop bits, parity-generation, and parity-checking.</p>
+
+<h3>Configuring the USART Interface</h3>
+
+<p>For simplicity, the USART is configured to communicate at the default 9600 bps defined in the Smart Card standard.
+I believe that the ACOS5 is also capable of communicating at 125 kbps, but I have not yet worked out the command to get it into that mode.
+Both Answer to Reset (ATR) and the following communications will take place at 9600 bps unless configured to do otherwise.</p>
+
+<p>The code to configure the USART interface is straightforward from the data sheet:</p>
+
+<figure class='code'><figcaption><span>Configure the USART to Communicate with the Smart Card </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>  <span class="kt">void</span> <span class="nf">init_USART_9600</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Baud rate</span>
+</span><span class='line'>    <span class="c1">// UBRR = f_osc/(16*baud) - 1</span>
+</span><span class='line'>    <span class="c1">// For 9600Hz, UBRR ~= 129.2 = 20000000/(16*9600) - 1</span>
+</span><span class='line'>    <span class="n">UBRRH</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">UBRRL</span> <span class="o">=</span> <span class="mi">230</span><span class="p">;</span> <span class="c1">// 129 didn&#39;t look right on the oscilloscope. 230 works well.</span>
+</span><span class='line'>    <span class="c1">// Set frame format: 8data, 1stop bit, even parity</span>
+</span><span class='line'>    <span class="n">UCSRC</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;&lt;</span> <span class="n">USBS</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="mi">3</span> <span class="o">&lt;&lt;</span> <span class="n">UCSZ0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">UPM1</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since a Smart Card only has a single IO pad, I implemented the AVR&rsquo;s transceiver interface by connecting the IO pad of the card to both the AVR&rsquo;s TX and RX pins.
+The direction of data on the IO line can then be controlled by software by activating and deactivating the USART&rsquo;s transmit and receieve modes exclusively.
+When in receive mode, both the TX and RX pin on the microcontroller become high-impedance inputs, allowing the Smart Card to transmit.
+In transmit mode, the microcontroller drives the TX pin, sending data to the Smart Card.
+The C code to configure receive and transmit modes is  straightforward, based on the example code provided in the data sheet.
+Since the transmit and receive modes are both enabled in the same control register, setting one without setting the other implicitly disables the latter.
+The only other notable thing is that the <code>TXC</code> bit should be set when entering transmit mode to prevent the USART hardware from transmitting whatever byte happens to be already in the transmit buffer.</p>
+
+<p>The code is as follows:</p>
+
+<figure class='code'><figcaption><span>Configuring the USART for Transmit and Receive Modes </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>  <span class="kt">void</span> <span class="nf">init_USART_RX</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Enable receiver</span>
+</span><span class='line'>    <span class="n">UCSRB</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">RXEN</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">init_USART_TX</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Enable transmitter and tell it the buffer is empty.</span>
+</span><span class='line'>    <span class="n">UCSRB</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">TXEN</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">TXC</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Transmitting and Receiving Bytes</h3>
+
+<p>The transmit and receive processes are also straightforward.
+The only thing to keep in mind is that the actual USART hardware is asynchronous to the rest of the running code.
+That is, once a byte is written to the output buffer, the code continues to execute while the byte is transmitted in the background at the specified baud rate.
+To simplify the code structure and avoid using interrupt call-back routines, my code keeps itself sychronous by waiting for each transmitted character to be flushed from the buffer before proceeding.
+Similarly, the code to receive a character blocks until a character is received.
+In one sense, this is dangerous because it could wait forever if the card became unresponsive when the interface was expecing a byte.
+In practice, this should not be much of a problem for me because my research will exercise the card in controlled and well-known routines.</p>
+
+<p>The transmit and receive code is as follows:</p>
+
+<figure class='code'><figcaption><span>Transmitting and Receiving Data with the USART</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>  <span class="kt">void</span> <span class="nf">USART_TX</span><span class="p">(</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">byte</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Clear the TX Complete flag by writing a 1 to it</span>
+</span><span class='line'>    <span class="n">UCSRA</span> <span class="o">=</span> <span class="n">UCSRA</span> <span class="o">|</span> <span class="p">(</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">TXC</span> <span class="p">);</span>
+</span><span class='line'>    <span class="c1">// Wait until transmit buffer is ready</span>
+</span><span class='line'>    <span class="k">while</span><span class="p">(</span> <span class="o">!</span><span class="p">(</span> <span class="n">UCSRA</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">UDRE</span> <span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+</span><span class='line'>      <span class="p">;</span> <span class="c1">// Spin-lock</span>
+</span><span class='line'>    <span class="c1">// Send the byte</span>
+</span><span class='line'>    <span class="n">UDR</span> <span class="o">=</span> <span class="n">byte</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="kt">unsigned</span> <span class="kt">char</span> <span class="nf">USART_RX</span><span class="p">(</span> <span class="kt">void</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Wait until receive buffer is ready</span>
+</span><span class='line'>    <span class="k">while</span><span class="p">(</span> <span class="o">!</span><span class="p">(</span> <span class="n">UCSRA</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">RXC</span> <span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+</span><span class='line'>      <span class="p">;</span> <span class="c1">// Spin-lock</span>
+</span><span class='line'>    <span class="c1">// Send the byte</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">UDR</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
+  
+</feed>
