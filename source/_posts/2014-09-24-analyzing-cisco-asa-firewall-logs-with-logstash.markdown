@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Analyzing Cisco ASA Firewall Logs with Logstash"
-date: 2014-09-01 22:14:01 -0400
+date: 2014-09-24 22:32:01 -0400
 comments: true
 categories: 
 - Logstash
@@ -21,10 +21,16 @@ In this article, I'll walk through the process I used to tackle this problem, en
 
 ## TL;DR
 
-If you're interested in the details about how this configuration was developed, read more below. If you're just here for the final configuration file, here it is:
+If you're interested in the details about how this configuration was developed, read more below.
+If you're just here for the final configuration file, here it is.
+Unfortunately, there's not a [Pygments][pygments] lexer to provide syntax-highlighting for the Logstash config file format yet, but that's a [yak to be shaved][yak-shaving] another day.
+
+[pygments]: http://pygments.org/
+[yak-shaving]: http://en.wiktionary.org/wiki/yak_shaving
 
 ``` text cisco-asa.conf
 input {
+  # Receive Cisco ASA logs on the standard syslog UDP port 514
   udp {
     port => 514
     type => "cisco-asa"
@@ -33,7 +39,7 @@ input {
 
 filter {
   if type == "cisco-asa" {
-    # Pull the syslog part and Cisco tag out of the message
+    # Split the syslog part and Cisco tag out of the message
     grok {
       match => ["message", "%{CISCO_TAGGED_SYSLOG} %{GREEDYDATA:cisco_message}"]
     }
@@ -41,37 +47,7 @@ filter {
     # Parse the syslog severity and facility
     syslog_pri { }
 
-    # Extract fields from the each of the detailed message types
-    # The patterns provided below are included in Logstash since 1.2.0
-    grok {
-      match => [
-        "cisco_message", "%{CISCOFW106001}",
-        "cisco_message", "%{CISCOFW106006_106007_106010}",
-        "cisco_message", "%{CISCOFW106014}",
-        "cisco_message", "%{CISCOFW106015}",
-        "cisco_message", "%{CISCOFW106021}",
-        "cisco_message", "%{CISCOFW106023}",
-        "cisco_message", "%{CISCOFW106100}",
-        "cisco_message", "%{CISCOFW110002}",
-        "cisco_message", "%{CISCOFW302010}",
-        "cisco_message", "%{CISCOFW302013_302014_302015_302016}",
-        "cisco_message", "%{CISCOFW302020_302021}",
-        "cisco_message", "%{CISCOFW305011}",
-        "cisco_message", "%{CISCOFW313001_313004_313008}",
-        "cisco_message", "%{CISCOFW313005}",
-        "cisco_message", "%{CISCOFW402117}",
-        "cisco_message", "%{CISCOFW402119}",
-        "cisco_message", "%{CISCOFW419001}",
-        "cisco_message", "%{CISCOFW419002}",
-        "cisco_message", "%{CISCOFW500004}",
-        "cisco_message", "%{CISCOFW602303_602304}",
-        "cisco_message", "%{CISCOFW710001_710002_710003_710005_710006}",
-        "cisco_message", "%{CISCOFW713172}",
-        "cisco_message", "%{CISCOFW733100}"
-      ]
-    }
-
-    # Parse the date
+    # Parse the date from the "timestamp" field to the "@timestamp" field
     date {
       match => ["timestamp",
         "MMM dd HH:mm:ss",
@@ -79,11 +55,58 @@ filter {
         "MMM dd yyyy HH:mm:ss",
         "MMM  d yyyy HH:mm:ss"
       ]
+      timezone => "America/New_York"
+    }
+
+    # Clean up redundant fields if parsing was successful
+    if "_grokparsefailure" not in [tags] {
+      mutate {
+        rename => ["cisco_message", "message"]
+        remove_field => ["timestamp"]
+      }
+    }
+    
+    # Extract fields from the each of the detailed message types
+    # The patterns provided below are included in Logstash since 1.2.0
+    grok {
+      match => [
+        "message", "%{CISCOFW106001}",
+        "message", "%{CISCOFW106006_106007_106010}",
+        "message", "%{CISCOFW106014}",
+        "message", "%{CISCOFW106015}",
+        "message", "%{CISCOFW106021}",
+        "message", "%{CISCOFW106023}",
+        "message", "%{CISCOFW106100}",
+        "message", "%{CISCOFW110002}",
+        "message", "%{CISCOFW302010}",
+        "message", "%{CISCOFW302013_302014_302015_302016}",
+        "message", "%{CISCOFW302020_302021}",
+        "message", "%{CISCOFW305011}",
+        "message", "%{CISCOFW313001_313004_313008}",
+        "message", "%{CISCOFW313005}",
+        "message", "%{CISCOFW402117}",
+        "message", "%{CISCOFW402119}",
+        "message", "%{CISCOFW419001}",
+        "message", "%{CISCOFW419002}",
+        "message", "%{CISCOFW500004}",
+        "message", "%{CISCOFW602303_602304}",
+        "message", "%{CISCOFW710001_710002_710003_710005_710006}",
+        "message", "%{CISCOFW713172}",
+        "message", "%{CISCOFW733100}"
+      ]
     }
   }
 }
 
 output {
+  # Archive Cisco ASA firewall logs on disk based on the event's timestamp
+  # Results in directories for each year and month, with conveniently-named log files, like:
+  # /path/to/archive/cisco-asa/2014/2014-09/cisco-asa-2014-09-24.log
+  file {
+    path => "/path/to/archive/%{type}/%{+YYYY}/%{+YYYY-MM}/%{type}-%{+YYYY-MM-dd}.log"
+  }
+
+  # Also output to ElasticSearch for review in Kibana
   elasticsearch_http { host => "elasticsearch-server-name" }
 }
 ```
@@ -93,14 +116,14 @@ output {
 After doing some Google searches, I found that several people were trying to do this with varying levels of success, but no one had yet documented even an 80% solution.
 The best I could find was [a gist by dav3860][dav3860_gist], which gave me a great start on how to parse some of the [many, many Cisco ASA syslog message formats][asa_syslog].
 Unfortunately, this gist didn't cover many of the message formats that I wanted to analyze from my environment and didn't capture all of the available data fields from the messages.
-Seeing that there was demand for it on the mailing list and no one else seemed to have a good solution, I took it upon myself to do it myself.
+Seeing that there was demand for it on the mailing list and no one else seemed to have a good solution, I decided to figure it out myself and contribute the result back to the community.
 
 [dav3860_gist]: https://gist.github.com/dav3860/5345656
 [asa_syslog]: http://www.cisco.com/en/US/docs/security/asa/syslog-guide/logmsgs.html
 
 ## Stand Back, I Know Regular Expressions
 
-iI started by collecting a large-ish sample of about half a million events from my production environment.
+I started by collecting a large-ish sample of about half a million events from my production environment.
 The ASA Device Manager (ASDM) software made this process pretty easy, if a bit tedious, by providing a file manager to download the log files from its internal Flash memory.
 This allowed me to iteratively develop Grok expression against a known corpus of data.
 When I hit an edge-case that failed to parse for some reason, I could tweak the expression and try again with the same input.
@@ -142,13 +165,13 @@ The awesome power of Grok patterns is that it's pretty easy to tweak them to wor
 At this point, we have enough to actually run the ELK stack to guide the rest of the development.
 The following is a simple "test fixture" setup that I found useful during this process.
 I'm going to assume that you're trying to accomplish this task using a Windows machine, but it's pretty easy to tell how the same would work in Bash.
-Let's be honest. There are too few tutorials that help people be productive with tools like this on Windows.
+Let's be honest; there are too few tutorials that help people be productive with tools like this on Windows.
 
 First, download [the latest Logstash core zip file (currently 1.4.2)][logstash_1.4.2] and unpack it somewhere convenient.
 
 [logstash_1.4.2]: https://download.elasticsearch.org/logstash/logstash/logstash-1.4.2.zip
 
-Then create the a configuration file called `logstash.conf` and a batch file called `run_logstash.bat` containing the following:
+Then create a configuration file called `logstash.conf` and a batch file called `run_logstash.bat` containing the following:
 
 ``` text logstash.conf
 input {
@@ -168,6 +191,7 @@ filter {
       "MMM dd yyyy HH:mm:ss",
       "MMM  d yyyy HH:mm:ss"
     ]
+    timezone => "America/New_York"
   }
 
   syslog_pri { }
@@ -193,7 +217,7 @@ logstash-1.4.2\bin\logstash.bat agent -f logstash.conf
 ```
 
 When you execute `run_logstash.bat`, Logstash will fire up and wait for input on `STDIN`.
-When you paste a set of events into the console, they will be processed and the results will be displayed on the screen as well as being appended to the specified files.
+When you paste a set of events into the console, they will be processed and the results displayed on the screen as well as being appended to the specified files.
 
 I had a big sample of event data that I had collected, so it resulted in a bunch of `success_<something>.json` files of varying sizes.
 Each of these files contained the JSON-ified version of each event.
@@ -223,7 +247,7 @@ By adding the following Grok filter to the filter list, I was able to easily par
 ``` text logstash.conf
 # ...
 filter {
-# ...
+  # ...
 
   syslog_pri { }
 
@@ -273,6 +297,8 @@ The format of the pattern file is the same as what would go in the `match` claus
 
 Here's a snippet of the resulting patterns file in all its complex glory, but only for the demo messages we're discussing here.
 These patterns and a bunch more are already included in Logstash, so you won't need to include them in your own pattern files.
+The power of Grok is that, though these patterns can get pretty hairy, they're reasonably understandable.
+The fully-expanded regular expressions they represent are simply asburd and would be nearly impossible to change or maintain.
 
 ``` text patterns/patterns.txt
 #== Cisco ASA ==
@@ -297,13 +323,13 @@ CISCOFW710001_710002_710003_710005_710006 %{WORD:protocol} (?:request|access) %{
 #== End Cisco ASA ==
 ```
 
-Now, we can use the pattern file to extract the complexity from the `logstash.conf` configuration file.
+Now we can use the pattern file to extract the complexity from the `logstash.conf` configuration file.
 The previous configuration snippet can now be replaced by this one:
 
 ``` text logstash.conf
 # ...
 filter {
-# ...
+  # ...
 
   syslog_pri { }
 
@@ -320,6 +346,80 @@ filter {
 
 This results in the same output as above, only now the Grok filter will try to match against each of the requested patterns until one of them succeeds.
 
+From this point, it just took additional slogging through the various event formats, documentation, and real-world example data until I had most of what I wanted.
+If you're curious about what message formats are available in the Logstash distribution today, [this][ls-firewall-patterns] source file contains them.
+
+I have tried to consolidate the field names that are parsed out of the messages to make the Kibana dashboard-creation process more straightforward.
+For example, if a message is talking about the disposition of a connection in some way, I parse that out as the `action` field even though the Cisco documentation doesn't call it an "action."
+This allows you to easily create a Kibana dashboard showing a table or graph summarizing the values of the `action` field, like `denied`, `permitted`, or `discarded`.
+
+[ls-firewall-patterns]: https://github.com/elasticsearch/logstash/blob/master/patterns/firewalls
+
 ## Cleaning Up
 
+What's still missing is the final polish.
+You may notice that there are some redundant fields that are going to end up wasting space in the database where these events will ultimately live.
+For example, `timestamp` and `@timestamp` contain the same information expressed two different ways.
+`timestamp` is the Cisco format that was parsed out of the message, and `@timestamp` is Logstash's internal representation in ISO8601 format that results from the `date` filter.
+Also, the `message` field becomes redundant once it has been parsed into its constituent parts.
+I find that, while we don't need to keep both `message` and `cisco_message`, it is worth keeping the content of the smaller `cisco_message` field rather than just the constituent fields.
+This allows easier troubleshooting of the Grok parsing if there's a strange edge-case or dumping out the full text of the log lines to a file to show someone outside of Kibana.
 
+We can very easily strip out the redundant fields, making sure to only truncate data that was successfully parsed, using a `mutate` filter:
+
+``` text logstash.conf
+# ...
+
+filter {
+  # ...
+
+  # Clean up redundant fields if parsing was successful
+  if "_grokparsefailure" not in [tags] {
+    mutate {
+      rename => ["cisco_message", "message"]
+      remove_field => ["timestamp"]
+    }
+  }
+
+  # ...
+}
+
+# ...
+```
+
+It's also a good idea to design the pieces of your Logstash configuration to play nicely with each other as you add more log sources and destinations.
+One common way to do this is the apply a `type` to the event at the input, then process it accordingly using conditionals, like so:
+
+``` text logstash.conf
+input {
+  # Receive Cisco ASA logs on the standard syslog UDP port 514
+  udp {
+    port => 514
+    type => "cisco-asa"
+  }
+}
+
+filter {
+  if type == "cisco-asa" {
+    # Put your ASA-specific Grok, Date, and Mutate filters here
+  }
+}
+
+output {
+  # Archive Cisco ASA firewall logs on disk based on the event's timestamp
+  # Results in directories for each year and month, with conveniently-named log files, like:
+  # /path/to/archive/cisco-asa/2014/2014-09/cisco-asa-2014-09-24.log
+  file {
+    path => "/path/to/archive/%{type}/%{+YYYY}/%{+YYYY-MM}/%{type}-%{+YYYY-MM-dd}.log"
+  }
+
+  # Also output to ElasticSearch for review in Kibana
+  elasticsearch_http { host => "elasticsearch-server-name" }
+}
+```
+
+Putting all the pieces together, you get the configuration listed in the TL;DR section at the top of the post!
+The result is that you have taken "human-readable" logs from your firewall, transformed them into what's known as "structured" logs, and stored them for later review.
+
+In my next post, I will show how that review process might look by going through the steps to create exploratory dashboards in Kibana.
+Stay tuned!
