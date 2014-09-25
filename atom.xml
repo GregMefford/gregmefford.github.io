@@ -4,7 +4,7 @@
   <title><![CDATA[acts_as_engineer]]></title>
   <link href="http://www.gregmefford.com/atom.xml" rel="self"/>
   <link href="http://www.gregmefford.com/"/>
-  <updated>2014-06-23T23:38:37-04:00</updated>
+  <updated>2014-09-24T22:30:43-04:00</updated>
   <id>http://www.gregmefford.com/</id>
   <author>
     <name><![CDATA[Greg Mefford]]></name>
@@ -12,6 +12,673 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Analyzing Cisco ASA Firewall Logs with Logstash]]></title>
+    <link href="http://www.gregmefford.com/blog/2014/09/24/analyzing-cisco-asa-firewall-logs-with-logstash/"/>
+    <updated>2014-09-24T22:32:01-04:00</updated>
+    <id>http://www.gregmefford.com/blog/2014/09/24/analyzing-cisco-asa-firewall-logs-with-logstash</id>
+    <content type="html"><![CDATA[<p>A year ago, I had a need to collect, analyze, and archive firewall logs from several Cisco ASA appliances.
+The problem with Cisco&rsquo;s ASA syslog format is that each type of message is a special snowflake, apparently designed for human consumption rather than machine parsing.
+The obvious solution was, of course, to use what is now know as <a href="http://www.elasticsearch.org/overview/">the ELK stack</a>: ElasticSearch, Logstash, and Kibana.
+In this article, I&rsquo;ll walk through the process I used to tackle this problem, ending with a full configuration file that you can use in your environment.</p>
+
+<!-- more -->
+
+
+<h2>TL;DR</h2>
+
+<p>If you&rsquo;re interested in the details about how this configuration was developed, read more below.
+If you&rsquo;re just here for the final configuration file, here it is.
+Unfortunately, there&rsquo;s not a <a href="http://pygments.org/">Pygments</a> lexer to provide syntax-highlighting for the Logstash config file format yet, but that&rsquo;s a <a href="http://en.wiktionary.org/wiki/yak_shaving">yak to be shaved</a> another day.</p>
+
+<figure class='code'><figcaption><span>cisco-asa.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>input {
+</span><span class='line'>  # Receive Cisco ASA logs on the standard syslog UDP port 514
+</span><span class='line'>  udp {
+</span><span class='line'>    port =&gt; 514
+</span><span class='line'>    type =&gt; &quot;cisco-asa&quot;
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>filter {
+</span><span class='line'>  if type == &quot;cisco-asa&quot; {
+</span><span class='line'>    # Split the syslog part and Cisco tag out of the message
+</span><span class='line'>    grok {
+</span><span class='line'>      match =&gt; [&quot;message&quot;, &quot;%{CISCO_TAGGED_SYSLOG} %{GREEDYDATA:cisco_message}&quot;]
+</span><span class='line'>    }
+</span><span class='line'>
+</span><span class='line'>    # Parse the syslog severity and facility
+</span><span class='line'>    syslog_pri { }
+</span><span class='line'>
+</span><span class='line'>    # Parse the date from the &quot;timestamp&quot; field to the &quot;@timestamp&quot; field
+</span><span class='line'>    date {
+</span><span class='line'>      match =&gt; [&quot;timestamp&quot;,
+</span><span class='line'>        &quot;MMM dd HH:mm:ss&quot;,
+</span><span class='line'>        &quot;MMM  d HH:mm:ss&quot;,
+</span><span class='line'>        &quot;MMM dd yyyy HH:mm:ss&quot;,
+</span><span class='line'>        &quot;MMM  d yyyy HH:mm:ss&quot;
+</span><span class='line'>      ]
+</span><span class='line'>      timezone =&gt; &quot;America/New_York&quot;
+</span><span class='line'>    }
+</span><span class='line'>
+</span><span class='line'>    # Clean up redundant fields if parsing was successful
+</span><span class='line'>    if &quot;_grokparsefailure&quot; not in [tags] {
+</span><span class='line'>      mutate {
+</span><span class='line'>        rename =&gt; [&quot;cisco_message&quot;, &quot;message&quot;]
+</span><span class='line'>        remove_field =&gt; [&quot;timestamp&quot;]
+</span><span class='line'>      }
+</span><span class='line'>    }
+</span><span class='line'>
+</span><span class='line'>    # Extract fields from the each of the detailed message types
+</span><span class='line'>    # The patterns provided below are included in Logstash since 1.2.0
+</span><span class='line'>    grok {
+</span><span class='line'>      match =&gt; [
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW106001}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW106006_106007_106010}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW106014}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW106015}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW106021}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW106023}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW106100}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW110002}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW302010}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW302013_302014_302015_302016}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW302020_302021}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW305011}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW313001_313004_313008}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW313005}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW402117}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW402119}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW419001}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW419002}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW500004}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW602303_602304}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW710001_710002_710003_710005_710006}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW713172}&quot;,
+</span><span class='line'>        &quot;message&quot;, &quot;%{CISCOFW733100}&quot;
+</span><span class='line'>      ]
+</span><span class='line'>    }
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>output {
+</span><span class='line'>  # Archive Cisco ASA firewall logs on disk based on the event&#39;s timestamp
+</span><span class='line'>  # Results in directories for each year and month, with conveniently-named log files, like:
+</span><span class='line'>  # /path/to/archive/cisco-asa/2014/2014-09/cisco-asa-2014-09-24.log
+</span><span class='line'>  file {
+</span><span class='line'>    path =&gt; &quot;/path/to/archive/%{type}/%{+YYYY}/%{+YYYY-MM}/%{type}-%{+YYYY-MM-dd}.log&quot;
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  # Also output to ElasticSearch for review in Kibana
+</span><span class='line'>  elasticsearch_http { host =&gt; &quot;elasticsearch-server-name&quot; }
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Surely This is a Solved Problem</h2>
+
+<p>After doing some Google searches, I found that several people were trying to do this with varying levels of success, but no one had yet documented even an 80% solution.
+The best I could find was <a href="https://gist.github.com/dav3860/5345656">a gist by dav3860</a>, which gave me a great start on how to parse some of the <a href="http://www.cisco.com/en/US/docs/security/asa/syslog-guide/logmsgs.html">many, many Cisco ASA syslog message formats</a>.
+Unfortunately, this gist didn&rsquo;t cover many of the message formats that I wanted to analyze from my environment and didn&rsquo;t capture all of the available data fields from the messages.
+Seeing that there was demand for it on the mailing list and no one else seemed to have a good solution, I decided to figure it out myself and contribute the result back to the community.</p>
+
+<h2>Stand Back, I Know Regular Expressions</h2>
+
+<p>I started by collecting a large-ish sample of about half a million events from my production environment.
+The ASA Device Manager (ASDM) software made this process pretty easy, if a bit tedious, by providing a file manager to download the log files from its internal Flash memory.
+This allowed me to iteratively develop Grok expression against a known corpus of data.
+When I hit an edge-case that failed to parse for some reason, I could tweak the expression and try again with the same input.</p>
+
+<p>If you&rsquo;re here trying to figure out how to parse your Cisco ASA logs, you&rsquo;ve probably already seen what they look like.
+In case you haven&rsquo;t, and for the sake of discussion, here&rsquo;s a little taste (obviously contrived and anonymized):</p>
+
+<figure class='code'><figcaption><span>cisco-asa.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>&lt;134&gt;Sep 02 2014 11:50:10: %ASA-6-302013: Built inbound TCP connection 123456789 for inside:10.0.1.1/1234 (10.0.1.1/1234) to outside:10.0.2.2/80 (10.0.2.2/80)
+</span><span class='line'>&lt;134&gt;Sep 02 2014 11:50:10: %ASA-6-302014: Teardown TCP connection 123456789 for inside:10.0.1.1/1234 to outside:10.0.2.2/80 duration 0:00:00 bytes 420 TCP FINs
+</span><span class='line'>&lt;134&gt;Sep 02 2014 11:50:15: %ASA-6-106015: Deny TCP (no connection) from 10.0.1.1/4567 to 10.0.3.3/80 flags FIN ACK  on interface inside
+</span><span class='line'>&lt;163&gt;Sep 02 2014 11:50:25: %ASA-3-710003: TCP access denied by ACL from 10.0.4.4/6666 to outside:10.0.1.1/22
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Just from peering dubiously at these logs for a minute, I was able to divine a few things:</p>
+
+<ul>
+<li>There&rsquo;s a &ldquo;standard&rdquo; syslog prefix at the beginning with a severity code and a timestamp.</li>
+<li>The timestamp is in some random format, and it&rsquo;s in local time instead of UTC. ::sigh::</li>
+<li>There&rsquo;s some kind of Cisco proprietary code at the beginning that I&rsquo;m going to call a <code>ciscotag</code> for want of a better name.</li>
+<li>After the <code>ciscotag</code>, there&rsquo;s a human-readable message containing the meat and potatoes that we want to parse.</li>
+</ul>
+
+
+<p>With a little <a href="http://logstash.net/docs/latest/filters/grok">Grok-fu</a>, I was able to build the following patterns file to match the beginning part of the messages:</p>
+
+<figure class='code'><figcaption><span>patterns/patterns.txt</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>CISCO_TAGGED_SYSLOG ^&lt;%{POSINT:syslog_pri}&gt;%{CISCOTIMESTAMP:timestamp}( %{SYSLOGHOST:sysloghost})?: %%{CISCOTAG:ciscotag}:
+</span><span class='line'>CISCOTIMESTAMP %{MONTH} +%{MONTHDAY}(?: %{YEAR})? %{TIME}
+</span><span class='line'>CISCOTAG [A-Z0-9]+-%{INT}-(?:[A-Z0-9_]+)
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The keen-eyed reader will notice that these patterns don&rsquo;t match my logs identically.
+For example, my logs don&rsquo;t have a <code>SYSLOGHOST</code>, and I have the <code>YEAR</code> marked as optional even though it&rsquo;s there in my logs.
+Based on feedback from other people who tried to use my patterns, I learned that the ASA syslog output can vary based on firmware version and some config settings.
+The awesome power of Grok patterns is that it&rsquo;s pretty easy to tweak them to work flexibly for everyone without making a tangled mess.</p>
+
+<h2>Now We&rsquo;re Getting Somewhere</h2>
+
+<p>At this point, we have enough to actually run the ELK stack to guide the rest of the development.
+The following is a simple &ldquo;test fixture&rdquo; setup that I found useful during this process.
+I&rsquo;m going to assume that you&rsquo;re trying to accomplish this task using a Windows machine, but it&rsquo;s pretty easy to tell how the same would work in Bash.
+Let&rsquo;s be honest; there are too few tutorials that help people be productive with tools like this on Windows.</p>
+
+<p>First, download <a href="https://download.elasticsearch.org/logstash/logstash/logstash-1.4.2.zip">the latest Logstash core zip file (currently 1.4.2)</a> and unpack it somewhere convenient.</p>
+
+<p>Then create a configuration file called <code>logstash.conf</code> and a batch file called <code>run_logstash.bat</code> containing the following:</p>
+
+<figure class='code'><figcaption><span>logstash.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>input {
+</span><span class='line'>  stdin { }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>filter {
+</span><span class='line'>  grok {
+</span><span class='line'>    patterns_dir =&gt; &quot;.\patterns\&quot; # The directory containing the patterns file mentioned above
+</span><span class='line'>    match =&gt; [&quot;message&quot;, &quot;%{CISCO_TAGGED_SYSLOG} %{GREEDYDATA:cisco_message}&quot;]
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  date {
+</span><span class='line'>    match =&gt; [&quot;timestamp&quot;,
+</span><span class='line'>      &quot;MMM dd HH:mm:ss&quot;,
+</span><span class='line'>      &quot;MMM  d HH:mm:ss&quot;,
+</span><span class='line'>      &quot;MMM dd yyyy HH:mm:ss&quot;,
+</span><span class='line'>      &quot;MMM  d yyyy HH:mm:ss&quot;
+</span><span class='line'>    ]
+</span><span class='line'>    timezone =&gt; &quot;America/New_York&quot;
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  syslog_pri { }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>output {
+</span><span class='line'>  stdout { codec =&gt; &quot;rubydebug&quot; }
+</span><span class='line'>  if &quot;_grokparsefailure&quot; in [tags] {
+</span><span class='line'>    file {
+</span><span class='line'>      path =&gt; &quot;./failure.json&quot;
+</span><span class='line'>    }
+</span><span class='line'>  }
+</span><span class='line'>  else {
+</span><span class='line'>    file {
+</span><span class='line'>      path =&gt; &quot;./success_%{ciscotag}.json&quot;
+</span><span class='line'>    }
+</span><span class='line'>  }
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>run_logstash.bat</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bat'><span class='line'>logstash<span class="m">-1</span>.<span class="m">4</span>.<span class="m">2</span>\bin\logstash.bat agent -f logstash.conf
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When you execute <code>run_logstash.bat</code>, Logstash will fire up and wait for input on <code>STDIN</code>.
+When you paste a set of events into the console, they will be processed and the results displayed on the screen as well as being appended to the specified files.</p>
+
+<p>I had a big sample of event data that I had collected, so it resulted in a bunch of <code>success_&lt;something&gt;.json</code> files of varying sizes.
+Each of these files contained the JSON-ified version of each event.
+For example, the following would show up on the console, with the same being appended to the <code>success_ASA-3-710003.json</code> file (except on one line per event):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">{</span>
+</span><span class='line'><span class="go">                 &quot;message&quot; =&gt; &quot;&lt;134&gt;Sep 02 2014 11:50:10: %ASA-6-302013: Built inbound TCP connection 123456789 for inside:10.0.1.1/1234 (10.0.1.1/1234) to outside:10.0.2.2/80 (10.0.2.2/80)\r&quot;,</span>
+</span><span class='line'><span class="go">                &quot;@version&quot; =&gt; &quot;1&quot;,</span>
+</span><span class='line'><span class="go">              &quot;@timestamp&quot; =&gt; &quot;2014-09-02T15:50:10.000Z&quot;,</span>
+</span><span class='line'><span class="go">                    &quot;host&quot; =&gt; &quot;Forklift&quot;,</span>
+</span><span class='line'><span class="go">              &quot;syslog_pri&quot; =&gt; &quot;134&quot;,</span>
+</span><span class='line'><span class="go">               &quot;timestamp&quot; =&gt; &quot;Sep 02 2014 11:50:10&quot;,</span>
+</span><span class='line'><span class="go">                &quot;ciscotag&quot; =&gt; &quot;ASA-6-302013&quot;,</span>
+</span><span class='line'><span class="go">           &quot;cisco_message&quot; =&gt; &quot;Built inbound TCP connection 123456789 for inside:10.0.1.1/1234 (10.0.1.1/1234) to outside:10.0.2.2/80 (10.0.2.2/80)\r&quot;,</span>
+</span><span class='line'><span class="go">    &quot;syslog_severity_code&quot; =&gt; 6,</span>
+</span><span class='line'><span class="go">    &quot;syslog_facility_code&quot; =&gt; 16,</span>
+</span><span class='line'><span class="go">         &quot;syslog_facility&quot; =&gt; &quot;local0&quot;,</span>
+</span><span class='line'><span class="go">         &quot;syslog_severity&quot; =&gt; &quot;informational&quot;</span>
+</span><span class='line'><span class="go">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Looking at the relative sizes of the resulting files, I could make inferences about the log volume of each type, allowing me to prioritize which patterns to focus on first.
+The <code>ASA-6-302013</code> event is logged whenever a connection is successfully established across the firewall, so that tends to be pretty frequent.
+By adding the following Grok filter to the filter list, I was able to easily parse out all of the relevant fields:</p>
+
+<figure class='code'><figcaption><span>logstash.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'># ...
+</span><span class='line'>filter {
+</span><span class='line'>  # ...
+</span><span class='line'>
+</span><span class='line'>  syslog_pri { }
+</span><span class='line'>
+</span><span class='line'>  grok {
+</span><span class='line'>    match =&gt; [
+</span><span class='line'>      &quot;cisco_message&quot;,
+</span><span class='line'>      &quot;Built inbound TCP connection %{INT:connection_id} for %{DATA:src_interface}:%{IP:src_ip}/%{INT:src_port}( \(%{IP:src_mapped_ip}/%{INT:src_mapped_port}\))? to %{DATA:dst_interface}:%{IP:dst_ip}/%{INT:dst_port}( \(%{IP:dst_mapped_ip}/%{INT:dst_mapped_port}\))?&quot;
+</span><span class='line'>    ]
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'># ...
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Which results in the following magical output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">{</span>
+</span><span class='line'><span class="go">                 &quot;message&quot; =&gt; &quot;&lt;134&gt;Sep 02 2014 11:50:10: %ASA-6-302013: Built inbound TCP connection 123456789 for inside:10.0.1.1/1234 (10.0.1.1/1234) to outside:10.0.2.2/80 (10.0.2.2/80)\r&quot;,</span>
+</span><span class='line'><span class="go">                &quot;@version&quot; =&gt; &quot;1&quot;,</span>
+</span><span class='line'><span class="go">              &quot;@timestamp&quot; =&gt; &quot;2014-09-02T15:50:10.000Z&quot;,</span>
+</span><span class='line'><span class="go">                    &quot;host&quot; =&gt; &quot;Forklift&quot;,</span>
+</span><span class='line'><span class="go">              &quot;syslog_pri&quot; =&gt; &quot;134&quot;,</span>
+</span><span class='line'><span class="go">               &quot;timestamp&quot; =&gt; &quot;Sep 02 2014 11:50:10&quot;,</span>
+</span><span class='line'><span class="go">                &quot;ciscotag&quot; =&gt; &quot;ASA-6-302013&quot;,</span>
+</span><span class='line'><span class="go">           &quot;cisco_message&quot; =&gt; &quot;Built inbound TCP connection 123456789 for inside:10.0.1.1/1234 (10.0.1.1/1234) to outside:10.0.2.2/80 (10.0.2.2/80)\r&quot;,</span>
+</span><span class='line'><span class="go">    &quot;syslog_severity_code&quot; =&gt; 6,</span>
+</span><span class='line'><span class="go">    &quot;syslog_facility_code&quot; =&gt; 16,</span>
+</span><span class='line'><span class="go">         &quot;syslog_facility&quot; =&gt; &quot;local0&quot;,</span>
+</span><span class='line'><span class="go">         &quot;syslog_severity&quot; =&gt; &quot;informational&quot;,</span>
+</span><span class='line'><span class="go">           &quot;connection_id&quot; =&gt; &quot;123456789&quot;,</span>
+</span><span class='line'><span class="go">           &quot;src_interface&quot; =&gt; &quot;inside&quot;,</span>
+</span><span class='line'><span class="go">                  &quot;src_ip&quot; =&gt; &quot;10.0.1.1&quot;,</span>
+</span><span class='line'><span class="go">                &quot;src_port&quot; =&gt; &quot;1234&quot;,</span>
+</span><span class='line'><span class="go">           &quot;src_mapped_ip&quot; =&gt; &quot;10.0.1.1&quot;,</span>
+</span><span class='line'><span class="go">         &quot;src_mapped_port&quot; =&gt; &quot;1234&quot;,</span>
+</span><span class='line'><span class="go">           &quot;dst_interface&quot; =&gt; &quot;outside&quot;,</span>
+</span><span class='line'><span class="go">                  &quot;dst_ip&quot; =&gt; &quot;10.0.2.2&quot;,</span>
+</span><span class='line'><span class="go">                &quot;dst_port&quot; =&gt; &quot;80&quot;,</span>
+</span><span class='line'><span class="go">           &quot;dst_mapped_ip&quot; =&gt; &quot;10.0.2.2&quot;,</span>
+</span><span class='line'><span class="go">         &quot;dst_mapped_port&quot; =&gt; &quot;80&quot;</span>
+</span><span class='line'><span class="go">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After figuring out several such Grok patterns and consulting with the documentation, I discovered that many of the formats are pretty similar to one another.
+For those, I broke out the common fragments from each message and combined the similar Grok expressions into a pattern file.
+The format of the pattern file is the same as what would go in the <code>match</code> clause of the <code>grok</code> filter, except with an <code>ALL_CAPS_NAME</code> at the beginning of each line.</p>
+
+<p>Here&rsquo;s a snippet of the resulting patterns file in all its complex glory, but only for the demo messages we&rsquo;re discussing here.
+These patterns and a bunch more are already included in Logstash, so you won&rsquo;t need to include them in your own pattern files.
+The power of Grok is that, though these patterns can get pretty hairy, they&rsquo;re reasonably understandable.
+The fully-expanded regular expressions they represent are simply asburd and would be nearly impossible to change or maintain.</p>
+
+<figure class='code'><figcaption><span>patterns/patterns.txt</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>#== Cisco ASA ==
+</span><span class='line'>CISCO_TAGGED_SYSLOG ^&lt;%{POSINT:syslog_pri}&gt;%{CISCOTIMESTAMP:timestamp}( %{SYSLOGHOST:sysloghost})?: %%{CISCOTAG:ciscotag}:
+</span><span class='line'>CISCOTIMESTAMP %{MONTH} +%{MONTHDAY}(?: %{YEAR})? %{TIME}
+</span><span class='line'>CISCOTAG [A-Z0-9]+-%{INT}-(?:[A-Z0-9_]+)
+</span><span class='line'>
+</span><span class='line'># Common Particles
+</span><span class='line'>CISCO_ACTION Built|Teardown|Deny|Denied|denied|requested|permitted|denied by ACL|discarded|est-allowed|Dropping|created|deleted
+</span><span class='line'>CISCO_REASON Duplicate TCP SYN|Failed to locate egress interface|Invalid transport field|No matching connection|DNS Response|DNS Query|(?:%{WORD}\s*)*
+</span><span class='line'>CISCO_DIRECTION Inbound|inbound|Outbound|outbound
+</span><span class='line'>
+</span><span class='line'># ASA-6-106015
+</span><span class='line'>CISCOFW106015 %{CISCO_ACTION:action} %{WORD:protocol} \(%{DATA:policy_id}\) from %{IP:src_ip}/%{INT:src_port} to %{IP:dst_ip}/%{INT:dst_port} flags %{DATA:tcp_flags}  on interface %{GREEDYDATA:interface}
+</span><span class='line'>
+</span><span class='line'># ASA-6-302013, ASA-6-302014, ASA-6-302015, ASA-6-302016
+</span><span class='line'>CISCOFW302013_302014_302015_302016 %{CISCO_ACTION:action}(?: %{CISCO_DIRECTION:direction})? %{WORD:protocol} connection %{INT:connection_id} for %{DATA:src_interface}:%{IP:src_ip}/%{INT:src_port}( \(%{IP:src_mapped_ip}/%{INT:src_mapped_port}\))?(\(%{DATA:src_fwuser}\))? to %{DATA:dst_interface}:%{IP:dst_ip}/%{INT:dst_port}( \(%{IP:dst_mapped_ip}/%{INT:dst_mapped_port}\))?(\(%{DATA:dst_fwuser}\))?( duration %{TIME:duration} bytes %{INT:bytes})?(?: %{CISCO_REASON:reason})?( \(%{DATA:user}\))?
+</span><span class='line'>
+</span><span class='line'># ASA-7-710001, ASA-7-710002, ASA-7-710003, ASA-7-710005, ASA-7-710006
+</span><span class='line'>CISCOFW710001_710002_710003_710005_710006 %{WORD:protocol} (?:request|access) %{CISCO_ACTION:action} from %{IP:src_ip}/%{INT:src_port} to %{DATA:dst_interface}:%{IP:dst_ip}/%{INT:dst_port}
+</span><span class='line'>
+</span><span class='line'>#== End Cisco ASA ==
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we can use the pattern file to extract the complexity from the <code>logstash.conf</code> configuration file.
+The previous configuration snippet can now be replaced by this one:</p>
+
+<figure class='code'><figcaption><span>logstash.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'># ...
+</span><span class='line'>filter {
+</span><span class='line'>  # ...
+</span><span class='line'>
+</span><span class='line'>  syslog_pri { }
+</span><span class='line'>
+</span><span class='line'>  grok {
+</span><span class='line'>    patterns_dir =&gt; &quot;./patterns/&quot;
+</span><span class='line'>    match =&gt; [
+</span><span class='line'>      &quot;cisco_message&quot;, &quot;%{CISCOFW106015}&quot;,
+</span><span class='line'>      &quot;cisco_message&quot;, &quot;%{CISCOFW302013_302014_302015_302016}&quot;,
+</span><span class='line'>      &quot;cisco_message&quot;, &quot;%{CISCOFW710001_710002_710003_710005_710006}&quot;,
+</span><span class='line'>    ]
+</span><span class='line'>  }
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This results in the same output as above, only now the Grok filter will try to match against each of the requested patterns until one of them succeeds.</p>
+
+<p>From this point, it just took additional slogging through the various event formats, documentation, and real-world example data until I had most of what I wanted.
+If you&rsquo;re curious about what message formats are available in the Logstash distribution today, <a href="https://github.com/elasticsearch/logstash/blob/master/patterns/firewalls">this</a> source file contains them.</p>
+
+<p>I have tried to consolidate the field names that are parsed out of the messages to make the Kibana dashboard-creation process more straightforward.
+For example, if a message is talking about the disposition of a connection in some way, I parse that out as the <code>action</code> field even though the Cisco documentation doesn&rsquo;t call it an &ldquo;action.&rdquo;
+This allows you to easily create a Kibana dashboard showing a table or graph summarizing the values of the <code>action</code> field, like <code>denied</code>, <code>permitted</code>, or <code>discarded</code>.</p>
+
+<h2>Cleaning Up</h2>
+
+<p>What&rsquo;s still missing is the final polish.
+You may notice that there are some redundant fields that are going to end up wasting space in the database where these events will ultimately live.
+For example, <code>timestamp</code> and <code>@timestamp</code> contain the same information expressed two different ways.
+<code>timestamp</code> is the Cisco format that was parsed out of the message, and <code>@timestamp</code> is Logstash&rsquo;s internal representation in ISO8601 format that results from the <code>date</code> filter.
+Also, the <code>message</code> field becomes redundant once it has been parsed into its constituent parts.
+I find that, while we don&rsquo;t need to keep both <code>message</code> and <code>cisco_message</code>, it is worth keeping the content of the smaller <code>cisco_message</code> field rather than just the constituent fields.
+This allows easier troubleshooting of the Grok parsing if there&rsquo;s a strange edge-case or dumping out the full text of the log lines to a file to show someone outside of Kibana.</p>
+
+<p>We can very easily strip out the redundant fields, making sure to only truncate data that was successfully parsed, using a <code>mutate</code> filter:</p>
+
+<figure class='code'><figcaption><span>logstash.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'># ...
+</span><span class='line'>
+</span><span class='line'>filter {
+</span><span class='line'>  # ...
+</span><span class='line'>
+</span><span class='line'>  # Clean up redundant fields if parsing was successful
+</span><span class='line'>  if &quot;_grokparsefailure&quot; not in [tags] {
+</span><span class='line'>    mutate {
+</span><span class='line'>      rename =&gt; [&quot;cisco_message&quot;, &quot;message&quot;]
+</span><span class='line'>      remove_field =&gt; [&quot;timestamp&quot;]
+</span><span class='line'>    }
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  # ...
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'># ...
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It&rsquo;s also a good idea to design the pieces of your Logstash configuration to play nicely with each other as you add more log sources and destinations.
+One common way to do this is the apply a <code>type</code> to the event at the input, then process it accordingly using conditionals, like so:</p>
+
+<figure class='code'><figcaption><span>logstash.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>input {
+</span><span class='line'>  # Receive Cisco ASA logs on the standard syslog UDP port 514
+</span><span class='line'>  udp {
+</span><span class='line'>    port =&gt; 514
+</span><span class='line'>    type =&gt; &quot;cisco-asa&quot;
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>filter {
+</span><span class='line'>  if type == &quot;cisco-asa&quot; {
+</span><span class='line'>    # Put your ASA-specific Grok, Date, and Mutate filters here
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>output {
+</span><span class='line'>  # Archive Cisco ASA firewall logs on disk based on the event&#39;s timestamp
+</span><span class='line'>  # Results in directories for each year and month, with conveniently-named log files, like:
+</span><span class='line'>  # /path/to/archive/cisco-asa/2014/2014-09/cisco-asa-2014-09-24.log
+</span><span class='line'>  file {
+</span><span class='line'>    path =&gt; &quot;/path/to/archive/%{type}/%{+YYYY}/%{+YYYY-MM}/%{type}-%{+YYYY-MM-dd}.log&quot;
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  # Also output to ElasticSearch for review in Kibana
+</span><span class='line'>  elasticsearch_http { host =&gt; &quot;elasticsearch-server-name&quot; }
+</span><span class='line'>}
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Putting all the pieces together, you get the configuration listed in the TL;DR section at the top of the post!
+The result is that you have taken &ldquo;human-readable&rdquo; logs from your firewall, transformed them into what&rsquo;s known as &ldquo;structured&rdquo; logs, and stored them for later review.</p>
+
+<p>In my next post, I will show how that review process might look by going through the steps to create exploratory dashboards in Kibana.
+Stay tuned!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Review: The Passionate Programmer]]></title>
