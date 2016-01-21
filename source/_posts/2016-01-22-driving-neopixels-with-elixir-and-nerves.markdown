@@ -192,6 +192,8 @@ The other issue is that I'm planning to drive a long strip of WS2812B NeoPixels,
 I cut the end off an old 5V cell phone charger and put a header on it to simplify bread-boarding, then added a 3300uF 6.3V electrolytic capacitor that I had lying around.
 The purpose of the capacitor is to stabilize the voltage being supplied to the strip when the current draw changes suddenly (e.g. when the lights are blinking on and off).
 
+{% img center /images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/neopixel_level_shifter.jpg Adapter circuit to drive NeoPixels with a Raspberry Pi %}
+
 With the hardware interface figured out, I needed a way to generate the required Pulse-Width-Modulation (PWM) pattern to control the LED colors.
 I did a lot of research about how this works and was considering doing it with a low-cost AVR microcontroller that would interface with the Raspberry Pi.
 If you're interested in the details, you should check out [the NeoPixel posts on josh.com][josh_com].
