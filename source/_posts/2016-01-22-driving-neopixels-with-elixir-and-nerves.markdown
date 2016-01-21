@@ -59,7 +59,7 @@ OTP is a _really_ cool feature that Elixir inherits from its Erlang heritage.
 One thing that wasn't obvious to me at first is that what a developer might normall call 'an application' is, in OTP terms, a collection on interacting OTP Applications.
 For example, if you want to log things to `stdout` or `stderr`, you might include the `Logger` Application in your `mix.exs` file, like this:
 
-``` elixir
+``` elixir mix.exs
 defmodule MyProject.Mixfile do
   use Mix.Project
 
@@ -104,20 +104,19 @@ I'm using Ubuntu 14.04 since that's what is described on the Nerves website and 
 
 From a fresh install of Ubuntu, you'll need to install the following packages to get started:
 
-```
+``` console bash
 sudo apt-get install git g++ libssl-dev libncurses5-dev bc m4 make unzip
 ```
 
 Then, check out the main Nerves repository:
 
-```
+``` console bash
 git clone git@github.com:nerves-project/nerves-system-br.git
 ```
 
 After that finishes, run `make help` to get a list of supported platforms:
 
-```
-$ make help
+``` console bash
 Nerves System Help
 ------------------
 
@@ -145,7 +144,7 @@ Nerves built-in configs:
 
 Since my target platform is an original Raspberry Pi Model B, I then ran
 
-```
+``` console bash
 make nerves_rpi_elixir_defconfig
 ```
 
@@ -159,7 +158,7 @@ This takes a really long time, depending on how fast your computer/hard drive/In
 While you're waiting for it to get done, maybe you could read about Bakeware, which lets you build your app using pre-baked system images instead of doing this build process yourself.
 For most people getting started, that's probably a better way to go.
 
-```
+``` console bash
 make
 ```
 
@@ -216,7 +215,7 @@ From there, I used a `Port` in Elixir to 'safely' talk to this C code without ri
 Here's how that looks.
 Also note the use of `:code.priv_dir/1`, which takes the name of the specified Release and returns the file system path to the `priv/` directory within your packaged Application.
 
-``` elixir
+``` elixir nerves_io_neopixel_driver.ex
 defmodule Nerves.IO.Neopixel.Driver do
 
   use GenServer
@@ -263,14 +262,9 @@ defmodule Nerves.IO.Neopixel.Mixfile do
 
   def project, do: [
     # ...
-
     compilers: [:Ws281x, :elixir, :app],
-
-    # ...
   ]
-
   # ...
-
 end
 ```
 
@@ -290,9 +284,9 @@ priv/rpi_ws281x: src/dma.c src/pwm.c src/ws2811.c src/main.c
 
 ## Controlling NeoPixels from Elixir
 
-If you want to dive in and try running the code, download the [`nerves_io_neopixel` repository][nerves_io_neopixel]:
+If you want to dive in and try running the code, download [the `nerves_io_neopixel` repository][nerves_io_neopixel]:
 
-``` bash
+``` console bash
 mkdir ~/projects
 cd ~/projects
 git clone git@github.com:GregMefford/nerves_io_neopixel.git
@@ -301,45 +295,55 @@ cd nerves_io_neopixel
 
 Now, assuming that you checked out `nerves-system-br` to your home directory and did the `make` step earlier, you can `source` the environment script to set up the cross-compilers, then build the project.
 
-``` bash
+``` console bash
 source ~/nerves-system-br/nerves-env.sh
 make
 ```
 
 If you're doing this on a Linux VM with a Windows host, you also need to take one more step to generate the `.img` file that you need to burn to the SD card:
 
-```
+``` console bash
 fwup -a -i _images/nerves_io_neopixel.fw -d _images/nerves_io_neopixel.img -t complete
 ```
 
 This takes the efficiently-packed "firmware" file with a `.fw` extension and formats it into a much larger file with the appropriate blank-space offsets so that it can be booted on the target.
 
-```
+``` console bash
  18M nerves_io_neopixel.fw
 329M nerves_io_neopixel.img
 ```
 
 From there, you can copy the `.img` file to the Windows host using WinSCP, burn it to an SD card using Win32DiskImager, and boot from it on the Raspberry Pi.
+
+{% img center /images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/winscp.png Copying the img file with WinSCP %}
+
+{% img center /images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/win32diskimager.png Burning the SD card with Win32DiskImager %}
+
 Once the Pi boots, it loads `iex` but doesn't do anything with the LEDs.
 To make something display, you have to `setup` which I/O pin to use and how many LEDs are chained together, then `render` something to them:
 
-```
+``` elixir iex
 Alias Nerves.IO.Neopixel
 {:ok, pid} = Neopixel.setup pin: 18, count: 3
 Neopixel.render(pid, <<255, 0, 0>> <> <<0, 255, 0>> <> <<0, 0, 255>>)
 ```
+
+{% img center /images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/nerves_neopixel_rgb.jpg Red, Green, and Blue NeoPixels %}
 
 The second argument to the `render` function is a binary representing the RGB values of each LED.
 I have just concatenated three 3-byte binaries here so it's easier to see where each LED's configuration begins and ends.
 It's not pretty, and it would be tedious to do anything very complicated with just this interface, but it works!
 
 To demonstrate something a bit more fun, I added a `scan` function that uses the `render` interface to draw a single red light sweeping back and forth across the strip, Battlestar Galactica style.
-This initializes a strip with 72 LEDs (since I happened to have a half-meter strip of [the 144-LED-per-meter variety][144_meter_strip]) and scans a red dot across them 5 times, displaying each frame for 1 ms.
+This initializes a strip with 72 LEDs (since I happened to have a half-meter strip of [the 144-LED-per-meter variety][144_meter_strip]) and scans a red dot across them 5 times, displaying each frame for 10 ms.
 
-```
+``` elixir iex
 Alias Nerves.IO.Neopixel
 {:ok, pid} = Neopixel.setup pin: 18, count: 72
-Neopixel.scan(pid, 1, 72, 5)
+Neopixel.scan(pid, 10, 72, 5)
 ```
+
+{% img center /images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/nerves_scanner.gif Red Light Scanning Across the Strip %}
+
 [nerves_io_neopixel]: https://github.com/GregMefford/nerves_io_neopixel
 [144_meter_strip]: https://www.adafruit.com/products/1506
