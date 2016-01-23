@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: NeoPixel | acts_as_engineer]]></title>
+  <link href="http://www.gregmefford.com/blog/categories/neopixel/atom.xml" rel="self"/>
+  <link href="http://www.gregmefford.com/"/>
+  <updated>2016-01-22T21:50:35-05:00</updated>
+  <id>http://www.gregmefford.com/</id>
+  <author>
+    <name><![CDATA[Greg Mefford]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Driving NeoPixels with Elixir and Nerves]]></title>
+    <link href="http://www.gregmefford.com/blog/2016/01/22/driving-neopixels-with-elixir-and-nerves/"/>
+    <updated>2016-01-22T22:41:20-05:00</updated>
+    <id>http://www.gregmefford.com/blog/2016/01/22/driving-neopixels-with-elixir-and-nerves</id>
+    <content type="html"><![CDATA[<p>Before starting this project, I was looking for a project I could use to learn <a href="http://elixir-lang.org">Elixir</a>. I&rsquo;d been hearing great things about it, played with it a little on <a href="http://exercism.io">Exercism</a>, and went to a local Elixir meetup a couple of times.</p>
+
+<p>Then I saw the talk <a href="https://www.youtube.com/watch?v=kpzQrFC55q4">&ldquo;Embedded Elixir in Action&rdquo; by Garth Hitchens</a> about using <a href="http://nerves-project.org">Nerves</a> to develop real-world Elixir-based embedded systems.
+I&rsquo;d had an original <a href="https://www.raspberrypi.org/products/model-b/">Raspberry Pi B</a> sitting on a shelf for a few years, so this seemed like it would be a good opportunity to learn Elixir and finally use that hardware for something.
+I also had a bunch of <a href="https://www.adafruit.com/category/168">WS2812B &ldquo;NeoPixel&rdquo; RGB LEDs</a> that I was itching for an excuse to use for something.
+(Caution: If you browse the available NeoPixel products on Adafruit, you may not be able to resist buying something).</p>
+
+<p>At this point, I was unable to resist hitting these three birds with one stone!</p>
+
+<!-- more -->
+
+
+<h2>A Brief Introduction</h2>
+
+<p>I started this project pretty new to Elixir, having just begun to read <a href="https://pragprog.com/book/elixir/programming-elixir">&ldquo;Programming Elixir&rdquo; by Dave Thomas</a>.
+I also wasn&rsquo;t familiar with embedded systems development beyond writing some hobbyist C code for AVR microcontrollers in the distant past.
+I want to take an opportunity to chime in with the other voices in saying that you don&rsquo;t have to really understand all these things deeply in order to get started and build a useful project.</p>
+
+<p>The journey was a lot of fun for me and I hope to share some of my excitement with you!</p>
+
+<h3>Elixir, Erlang, and Processes</h3>
+
+<p>Elixir is a functional programming language that runs on the Erlang virtual machine, called BEAM.
+This is just like how the Java Virtual Machine (JVM) was designed for running Java code, but can also host code written in other languages, like Clojure.
+In both cases, a brand-new language (i.e. Elixir or Clojure) was born with an already-robust, production-ready run-time environment instead of starting from scratch.</p>
+
+<p>Besides being a functional language, Elixir has a few other key concepts to understand when you&rsquo;re getting started.
+In Elixir, the code is arranged as functions that are grouped into Modules, which normally run many Processes in order to accomplish their purpose.
+Elixir code is basically designed around each Process being a tiny <a href="http://martinfowler.com/articles/microservices.html">microservice</a> sends and responds to messages from other Processes.
+If this concept just blew your mind, check out Chris Nelson&rsquo;s talk from CodeMash 2016: <a href="https://www.codemash.org/session/low-ceremony-microservices-with-elixir/">Low Ceremony Microservices with Elixir</a>.</p>
+
+<p>These Processes in the Erlang VM are much more lightweight than an Operating System process, so it&rsquo;s not unusual to have many thousands of them running at any time, much as you might have many Objects instantiated in a Ruby-based system.
+Also similar to Ruby&rsquo;s Objects, a Process in Elixir is how state is stored and accessed, by passing messages between Processes.</p>
+
+<p>Speaking of state, it&rsquo;s also worth mentioning that the data structures in Elixir are all immutable.
+When the state of a Process needs to be changed, it is accomplished by replacing its state with a new state rather than modifying parts of the state in-place.
+This is probably confusing at first for a new Elixir programmer, but it quickly becomes natural and enables Elixir to do some great things under the hood to enable efficient concurrency and garbage-collection.</p>
+
+<h3>OTP and Applications</h3>
+
+<p>OTP is a <em>really</em> cool feature that Elixir inherits from its Erlang heritage.
+One thing that wasn&rsquo;t obvious to me at first is that what a developer might normall call an &lsquo;application&rsquo; is, in OTP terms, a collection on interacting OTP Applications.
+For example, if you want to log things to <code>stdout</code> or <code>stderr</code>, you might include the <code>Logger</code> Application in your <code>mix.exs</code> file, like this:</p>
+
+<p>``` elixir mix.exs
+defmodule MyProject.Mixfile do
+  use Mix.Project</p>
+
+<p>  # &hellip;</p>
+
+<p>  def application do</p>
+
+<pre><code>[
+  applications: [:logger],
+  mod: {MyProject, []}
+]
+</code></pre>
+
+<p>  end</p>
+
+<p>end
+```</p>
+
+<p>Then, when you run your project, the <code>mod</code> option says that the <code>MyProject</code> Module will start the supervision tree for my top-level Application.
+The <code>applications</code> option says to also start additional OTP Application(s), their process(es) waiting to receive messages from other Processes.</p>
+
+<p>There is plenty more to learn about OTP, but you&rsquo;ll probably learn best by just reading up on it and trying it out for yourself.
+The official Elixir <a href="http://elixir-lang.org/getting-started/mix-otp/">Getting-Started Introduction to Mix and OTP</a> is, unsurprisingly, a great place to start.</p>
+
+<p>Onward and upward, to the main point!</p>
+
+<h2>Getting Started with Nerves</h2>
+
+<p>Having established how fun and exciting Elixir is, let&rsquo;s get some Elixir code running on a Raspberry Pi (or similar Linux-based embedded development platform).
+The tool to accomplish this is called <a href="http://nerves-project.org">Nerves</a>.
+In a nutshell, Nerves wraps up the <a href="https://buildroot.org">Buildroot</a> tool, making it trivially easy to cross-compile a stripped-down Linux image for your target platform of choice.</p>
+
+<p>As of this writing, there&rsquo;s a brand-new tool called <a href="http://www.bakeware.io">Bakeware</a> that can be used to simplify the process I&rsquo;m going to describe below for many common use-cases.
+Wendy Smoak recently wrote a <a href="http://wsmoak.net/2016/01/11/embedded-elixir-nerves-bake.html">blog post explaining how to use Bakeware</a>, so check that out if you&rsquo;re interested.
+Bakeware will probably be the preferred method of interacting with Nerves for most people going forward.
+Since it didn&rsquo;t exist when I started this project and you might be curious what Bakeware does behind the scenes, I&rsquo;ll explain the lower-level method I&rsquo;ve been using.</p>
+
+<h3>Setting up a Nerves Build Environment</h3>
+
+<p>Much has been written about how to get Nerves running on Mac OSX, so I&rsquo;m going to describe how to do it using a Windows machine with access to a Linux VM.
+On the Windows side, I&rsquo;m using Windows 10, but that probably isn&rsquo;t relevant because Windows isn&rsquo;t doing anything special here.
+For Linux, I&rsquo;m using <strong>Ubuntu 14.04</strong> since the Nerves website describes how to get started on Ubuntu.
+If you want to try it on another distribution, you&rsquo;ll have to figure out which equivalent packages to use.</p>
+
+<p>From a fresh install of Ubuntu, you&rsquo;ll need to install the following packages to get started:</p>
+
+<p><code>console bash
+sudo apt-get install git g++ libssl-dev libncurses5-dev bc m4 make unzip
+</code></p>
+
+<p>Then, check out the main Nerves repository:</p>
+
+<p><code>console bash
+git clone git@github.com:nerves-project/nerves-system-br.git
+</code></p>
+
+<p>After that finishes, run <code>make help</code> to get a list of supported platforms:</p>
+
+<p>``` console bash</p>
+
+<h2>Nerves System Help</h2>
+
+<p>Targets:
+  all                           &ndash; Build the current configuration
+  burn                          &ndash; Burn the most recent build to an SDCard (requires sudo)
+  system                        &ndash; Build a system image for use with bake
+  clean                         &ndash; Clean everything &ndash; run make xyz_defconfig after this</p>
+
+<p>Configuration:
+  menuconfig                    &ndash; Run Buildroot&rsquo;s menuconfig
+  linux-menuconfig              &ndash; Run menuconfig on the Linux kernel</p>
+
+<p>Nerves built-in configs:
+  bbb_linux_defconfig           &ndash; Build for bbb_linux
+  nerves_bbb_elixir_defconfig   &ndash; Build for nerves_bbb_elixir
+  nerves_bbb_erlang_defconfig   &ndash; Build for nerves_bbb_erlang
+  nerves_galileo_elixir_defconfig &ndash; Build for nerves_galileo_elixir
+  nerves_rpi2_elixir_defconfig  &ndash; Build for nerves_rpi2_elixir
+  nerves_rpi2_erlang_defconfig  &ndash; Build for nerves_rpi2_erlang
+  nerves_rpi_elixir_defconfig   &ndash; Build for nerves_rpi_elixir
+  nerves_rpi_erlang_defconfig   &ndash; Build for nerves_rpi_erlang
+  nerves_rpi_lfe_defconfig      &ndash; Build for nerves_rpi_lfe
+```</p>
+
+<p>Since my target platform is an original Raspberry Pi Model B, I then ran</p>
+
+<p><code>console bash
+make nerves_rpi_elixir_defconfig
+</code></p>
+
+<p>This sets up the configuration options to build a Linux image that will boot into Elixir&rsquo;s <code>iex</code> shell using the Raspberry Pi&rsquo;s HDMI monitor output.
+It&rsquo;s possible to re-configure the terminal to use the UART pins on the board, so that you could connect to it using PuTTY over an FTDI cable, so check out the how-to on <a href="https://github.com/nerves-project/nerves-system-br/blob/master/README.md">the <code>nerves-system-br</code> README</a> if you want to do that.
+Instead, I just plugged a monitor into the HDMI port and a USB keyboard into one of the USB ports.</p>
+
+<p>Once the default configuration is done, just run <code>make</code> to build the default system image.
+This will probably take a <em>really</em> long time, depending on the speed of your computer, hard drive, Internet connection, etc.</p>
+
+<p>This is ware Bakeware is a win for most use-cases.
+It pre-builds these base system images and toolchains ahead of time, so you can simply download and use them right away instead of building them yourself.
+Bakeware also eliminates the dependency on Linux, because the images were already &ldquo;baked&rdquo; on Linux with the appropriate kernels, headers, and other various voodoo available.</p>
+
+<p><code>console bash
+make
+</code></p>
+
+<p>This will result in the base firmware image being written to <code>buildroot/output/images/nerves-rpi-base.img</code>.
+At this point, I confirmed that things were working properly by copying this <code>.img</code> file to my Windows host machine using <a href="https://winscp.net/">WinSCP</a>, then burned it to an SD card using <a href="http://sourceforge.net/projects/win32diskimager">Win32DiskImager</a>.</p>
+
+<p>Yes, I downloaded and ran a Windows executable (As an Administrator!) from Sourceforge.
+I feel bad about it, but apparently, that&rsquo;s just how people get the functionality of <code>dd</code> on Windows.
+Let&rsquo;s be honest, it&rsquo;s about the same thing as a sudo-curl-bash installer which has become so common.</p>
+
+<p>After the SD card is done being written, I put it in my Raspberry Pi and booted it up.
+Lo and behold, (after only four seconds!) I was greeted by an <code>iex</code> prompt.</p>
+
+<p><img class="center" src="/images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/nerves_hello_world.jpg" title="Hello World from Elixir and Nerves on a Raspberry Pi" ></p>
+
+<h2>Driving NeoPixels from a Raspberry Pi</h2>
+
+<p>With all that out of the way, we&rsquo;re ready for the actual blinkenlights.
+Well, almost.</p>
+
+<p>First, we need a way to drive the 5V NeoPixel data intput using the Raspberry Pi&rsquo;s 3.3V outputs.
+One easy way to accomplish this is with a <a href="https://www.adafruit.com/product/1787">74AHCT125 Level-Shifter chip</a>, but I didn&rsquo;t have one laying around and didn&rsquo;t want to order one.
+What I <em>did</em> have laying around was an <a href="http://www.mouser.com/ProductDetail/Texas-Instruments/SN74ALS1035N">SN74ALS1035N Non-Inverting Buffer</a>.
+The trick was that the inputs happen to accept a High-level input voltage of only 2V, while the outputs are 5V nominal.
+Since the outputs are <a href="https://en.wikipedia.org/wiki/Open_collector">open-collector</a>, I had to use a 1k-ohm pull-up resistor from the output to VCC.</p>
+
+<p>The other issue is that I&rsquo;m planning to drive a long strip of WS2812B NeoPixels, which draws far more power than the Raspberry Pi can supply.
+I cut the end off an old 5V cell phone charger and put a header on it to simplify bread-boarding, then added a 3300uF 6.3V electrolytic capacitor that I had lying around.
+The purpose of the capacitor is to stabilize the voltage being supplied to the strip when the current draw changes suddenly (e.g. when the lights are blinking on and off).</p>
+
+<p>Here&rsquo;s a crude schematic of the circuit, and a picture of the dead-bug sculpture in all its magesty.</p>
+
+<p><img class="center" src="/images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/schematic.png" title="Schematic of the Adapter Circuit to Drive NeoPixels with a Raspberry Pi" ></p>
+
+<p><img class="center" src="/images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/neopixel_level_shifter.jpg" title="Picture of the Dead-Bug Circuit to Drive NeoPixels with a Raspberry Pi" ></p>
+
+<p>With the hardware interface figured out, I needed a way to generate the required Pulse-Width-Modulation (PWM) pattern to control the LED colors.
+I did a lot of research about how this works and was considering doing it with a low-cost AVR microcontroller that would interface with the Raspberry Pi.
+If you&rsquo;re interested in the details, you should check out <a href="http://wp.josh.com/category/neopixel">the NeoPixel posts on josh.com</a>.
+This guy did some truly amazing work documenting how the WS2812B &ldquo;NeoPixel&rdquo; works, and how to interface efficiently with it.</p>
+
+<p>In the end, it wasn&rsquo;t necessary, because <a href="https://github.com/jgarff/rpi_ws281x">the rpi_ws281x project</a> makes it possible to directly generate the required patterns using the Raspberry Pi&rsquo;s hardware PWM and Direct Memory Access (DMA) capabilities.</p>
+
+<h2>Building the Elixir Project and Interfacing with C code</h2>
+
+<p>This is the part of the project where I learned a lot about the basics of Elixir projects and a few more obscure details about building native C code as part of a project.</p>
+
+<p>To integrate the <code>rpi_ws281x</code> C library with my Elixir code, I chose to write a little C wrapper around it so that it would accept binary pixel data on <code>STDIN</code>, taking come configuration parameters on the command-line.
+From there, I used a <code>Port</code> in Elixir to &lsquo;safely&rsquo; talk to this C code without risking a catastrophic failure of the whole Erlang VM by loading the C code directly using the <code>NIF</code> method.</p>
+
+<p>Here&rsquo;s how that looks.
+Also note the use of <code>:code.priv_dir/1</code>, which takes the name of the specified Release and returns the file system path to the <code>priv/</code> directory within your packaged Application.</p>
+
+<p>``` elixir nerves_io_neopixel_driver.ex
+defmodule Nerves.IO.Neopixel.Driver do</p>
+
+<p>  use GenServer
+  require Logger</p>
+
+<p>  def start_link(settings, opts) do</p>
+
+<pre><code>Logger.debug "#{__MODULE__} Starting"
+GenServer.start_link(__MODULE__, settings, opts)
+</code></pre>
+
+<p>  end</p>
+
+<p>  def init(settings) do</p>
+
+<pre><code>Logger.debug "#{__MODULE__} initializing: #{inspect settings}"
+pin   = settings[:pin]
+count = settings[:count]
+
+cmd = "#{:code.priv_dir(:nerves_io_neopixel)}/rpi_ws281x #{pin} #{count}"
+port = Port.open({:spawn, cmd}, [:binary])
+{:ok, port}
+</code></pre>
+
+<p>  end</p>
+
+<p>  def handle_call({:render, pixel_data}, _from, port) do</p>
+
+<pre><code>Logger.debug "#{__MODULE__} rendering: #{inspect pixel_data}"
+Port.command(port, pixel_data)
+{:reply, :ok, port}
+</code></pre>
+
+<p>  end</p>
+
+<p>end
+```</p>
+
+<p>The other secret sauce was something I adapted from <a href="https://github.com/fhunleth/elixir_ale">Frank Hunleth&rsquo;s elixir_ale project</a>, which also uses some C code for low-level hardware interfacing.
+In your <code>mix.exs</code>, you just have to define a special <code>Compile</code> task (mine is called <code>Ws281x</code>), then add it to the <code>compilers</code> list further down.</p>
+
+<p>``` elixir mix.exs
+defmodule Mix.Tasks.Compile.Ws281x do
+  def run(_) do</p>
+
+<pre><code>0 = Mix.Shell.IO.cmd("make priv/rpi_ws281x")
+Mix.Project.build_structure
+:ok
+</code></pre>
+
+<p>  end
+end</p>
+
+<p>defmodule Nerves.IO.Neopixel.Mixfile do
+  use Mix.Project</p>
+
+<p>  def project, do: [</p>
+
+<pre><code># ...
+compilers: [:Ws281x, :elixir, :app],
+</code></pre>
+
+<p>  ]
+  # &hellip;
+end
+```</p>
+
+<p>This tells <code>mix</code> to shell-out to <code>make</code> to build <code>priv/rpi_ws281x</code>, which is the target of the C code I wrapped around the <code>rpi_ws281x</code> library.
+The <code>priv</code> directory in your project folder ends up getting packaged into the Erlang Release that is burned into the SD card, and accessible using the <code>:code.priv_dir/1</code> function mentioned earlier.
+Here is what I have in the <code>Makefile</code> to make that work:</p>
+
+<p>``` makefile Makefile
+include $(NERVES_ROOT)/scripts/nerves-elixir.mk</p>
+
+<p>priv/rpi_ws281x: src/dma.c src/pwm.c src/ws2811.c src/main.c
+  @mkdir -p priv
+  $(CC) $(CFLAGS) -o $@ $^
+```</p>
+
+<h2>Controlling NeoPixels from Elixir</h2>
+
+<p>If you want to dive in and try running the code, download <a href="https://github.com/GregMefford/nerves_io_neopixel">the <code>nerves_io_neopixel</code> repository</a>:</p>
+
+<p><code>console bash
+mkdir ~/projects
+cd ~/projects
+git clone git@github.com:GregMefford/nerves_io_neopixel.git
+cd nerves_io_neopixel
+</code></p>
+
+<p>Now, assuming that you checked out <code>nerves-system-br</code> to your home directory and did the <code>make</code> step earlier, you can <code>source</code> the environment script to set up the cross-compilers, then build the project.</p>
+
+<p><code>console bash
+source ~/nerves-system-br/nerves-env.sh
+make
+</code></p>
+
+<p>If you&rsquo;re doing this on a Linux VM with a Windows host, you also need to take one more step to generate the <code>.img</code> file that you need to burn to the SD card:</p>
+
+<p><code>console bash
+fwup -a -i _images/nerves_io_neopixel.fw -d _images/nerves_io_neopixel.img -t complete
+</code></p>
+
+<p>This takes the efficiently-packed &ldquo;firmware&rdquo; file with a <code>.fw</code> extension and formats it into a much larger file with the appropriate blank-space offsets so that it can be booted on the target.</p>
+
+<p><code>console bash
+ 18M nerves_io_neopixel.fw
+329M nerves_io_neopixel.img
+</code></p>
+
+<p>From there, you can copy the <code>.img</code> file to the Windows host using WinSCP, burn it to an SD card using Win32DiskImager, and boot from it on the Raspberry Pi.</p>
+
+<p><img class="center" src="/images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/winscp.png" title="Copying the img file with WinSCP" ></p>
+
+<p><img class="center" src="/images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/win32diskimager.png" title="Burning the SD card with Win32DiskImager" ></p>
+
+<p>Once the Pi boots, it loads <code>iex</code> but doesn&rsquo;t do anything with the LEDs.
+To make something display, you have to <code>setup</code> which I/O pin to use and how many LEDs are chained together, then <code>render</code> something to them:</p>
+
+<p><code>elixir iex
+Alias Nerves.IO.Neopixel
+{:ok, pid} = Neopixel.setup pin: 18, count: 3
+Neopixel.render(pid, &lt;&lt;255, 0, 0&gt;&gt; &lt;&gt; &lt;&lt;0, 255, 0&gt;&gt; &lt;&gt; &lt;&lt;0, 0, 255&gt;&gt;)
+</code></p>
+
+<p><img class="center" src="/images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/nerves_neopixel_rgb.jpg" title="Red, Green, and Blue NeoPixels" ></p>
+
+<p>The second argument to the <code>render</code> function is a binary representing the RGB values of each LED.
+I have just concatenated three 3-byte binaries here so it&rsquo;s easier to see where each LED&rsquo;s configuration begins and ends.
+It&rsquo;s not pretty, and it would be tedious to do anything very complicated with just this interface, but it works!</p>
+
+<p>To demonstrate something a bit more fun, I made a small demo to show how you might use the <code>Nerves.IO.Neopixel</code> library in a project.
+The project implements a <code>scan</code> function that uses the <code>render</code> interface to draw a single red light sweeping back and forth across the strip, Battlestar Galactica style.
+It initializes a strip with 72 LEDs (since I happened to have a half-meter strip of <a href="https://www.adafruit.com/products/1506">the 144-LED-per-meter variety</a>) and scans across them at 10 milliseconds per frame.</p>
+
+<p>You can check out the code for the <a href="https://github.com/GregMefford/nerves_neopixel_examples/tree/master/apps/scanner"><code>scanner</code> app in my <code>nerves_neopixel_examples</code> repo on GitHub</a>.</p>
+
+<p><img class="center" src="/images/posts/2016-01-22-driving-neopixels-with-elixir-and-nerves/nerves_scanner.gif" title="Red Light Scanning Across the Strip" ></p>
+]]></content>
+  </entry>
+  
+</feed>
